@@ -601,6 +601,13 @@
     </div>
 
     <h4 style="margin:20px 0 8px; font-size:17px;">Why the tolerance can be tighter with a nominal controller</h4>
+    <div class="anon" style="text-align:left; max-width:none; margin:0 0 14px;">
+      <b>Status: working explanation, not a result.</b> What follows is our reading of why the two
+      methods need differently shaped kernels. It is consistent with what we observed while tuning,
+      but it is not something we have isolated experimentally, and the paper deliberately does not
+      argue it. Read it as the reasoning behind a configuration choice, not as a claim the paper
+      supports.
+    </div>
     <p>
       An exponential kernel \(\exp(-e/\sigma)\) is informative only where \(e\) is comparable to
       \(\sigma\). Once \(e \gg \sigma\) the reward is pinned near zero and <em>flat</em>: it still
@@ -636,15 +643,19 @@
       respond</b>, which is why the baseline trains on the \(L_2^2\) kernel alone.
     </p>
     <p>
-      Read this way, the residual architecture does more than improve final accuracy: by
-      guaranteeing an operating point it <b>enlarges the set of reward shapings that are trainable
-      at all</b>. The precision reported in Table&nbsp;III and the reward that produces it are not
-      independent results &mdash; the second is reachable because of the first.
+      If this reading is right, the residual architecture would be doing more than improving final
+      accuracy &mdash; by guaranteeing an operating point it would also widen the range of reward
+      shapings that can be trained at all, making the precision in Table&nbsp;III and the reward
+      that produces it less independent than they appear. We have not tested that. Establishing it
+      would take a \(\sigma\) sweep run separately for each architecture, showing that the
+      trainable range differs rather than merely that the tuned values do; absent that, the
+      correlation is equally consistent with our having simply tuned each configuration until it
+      worked.
     </p>
     <p class="small">
-      The specific values are hand-tuned, and nothing here claims 0.001 and 0.005 are optimal or
-      that the ratio between them is principled. The claim is about which regime each kernel can be
-      placed in, not about where within that regime the tuning landed.
+      The values themselves are hand-tuned. Nothing here claims 0.001 and 0.005 are optimal, that
+      the ratio between them is principled, or that the flat-gradient account above is the only
+      explanation for why the baseline trains better without the \(L_1\) term.
     </p>
     <p class="small">
       This also matters for reading Table&nbsp;III: the baseline is not ManTra's reward applied to
