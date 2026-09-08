@@ -86,7 +86,7 @@
       \(\lVert g^{X}_{xy}\rVert\) measures tilt without needing a reference orientation and
       without a singularity. Three bodies are scored this way: the pelvis \(g^{P}\), the torso
       link \(g^{T}\), and each foot link \(g^{F_i}\).
-      Finally, \(\hat c = v_{xy,d}^{P}/\lVert v_{xy,d}^{P}\rVert\) is the unit commanded heading
+      Finally, \(\hat c = v^{P}_{d,xy}/\lVert v^{P}_{d,xy}\rVert\) is the unit commanded heading
       direction, and \(\psi\) the base yaw angle.
     </p>
 
@@ -176,24 +176,27 @@
     <h3>1.5 Regularization &mdash; command-gated locomotion</h3>
     <p class="small">
       Each is masked by the commanded behaviour, so the term is inert unless the command puts the
-      robot in the regime it polices.
+      robot in the regime it polices. Masks read the command components of \(c_t\) &mdash; the
+      commanded planar velocity \(v^{P}_{d,xy} = (v^{P}_{d,x}, v^{P}_{d,y})\) and the commanded
+      yaw rate \(\omega^{P}_{d,z}\); the penalized quantities are the corresponding
+      <em>measured</em> \(v^{P}_{xy}\) and \(\omega^{P}_{z}\). Thresholds are in m/s and rad/s.
     </p>
     <div class="tablewrap">
       <table>
         <thead><tr><th>Term</th><th>\(w_i\)</th><th>Mask</th><th>Penalized quantity</th></tr></thead>
         <tbody>
           <tr><td>Heading leakage</td><td class="num">&minus;10</td>
-              <td>\(\lVert c_{xy}\rVert > 0.05 \wedge \lvert\omega_z^{\text{cmd}}\rvert < 0.03\)</td>
-              <td>\(\bar\omega_z^2 + 0.15\,\omega_z^2\)</td></tr>
+              <td>\(\lVert v^{P}_{d,xy}\rVert > 0.05 \;\wedge\; \lvert\omega^{P}_{d,z}\rvert < 0.03\)</td>
+              <td>\(\left(\bar\omega^{P}_{z}\right)^2 + 0.15\left(\omega^{P}_{z}\right)^2\)</td></tr>
           <tr><td>Lateral leakage</td><td class="num">&minus;2</td>
-              <td>\(\lVert c_{xy}\rVert > 0.03\)</td>
-              <td>\(\bar v_\perp^2 + 0.15\,v_\perp^2\), with the signed \(v_\perp = \hat c_x v_y - \hat c_y v_x\)</td></tr>
+              <td>\(\lVert v^{P}_{d,xy}\rVert > 0.03\)</td>
+              <td>\(\left(\bar v_\perp\right)^2 + 0.15\left(v_\perp\right)^2\), with the signed \(v_\perp = \hat c_x v^{P}_{y} - \hat c_y v^{P}_{x}\)</td></tr>
           <tr><td>Turn-in-place leakage</td><td class="num">&minus;2.5</td>
-              <td>\(\lVert c_{xy}\rVert < 0.03 \wedge \lvert\omega_z^{\text{cmd}}\rvert > 0.1\)</td>
-              <td>\(\lVert v_{xy}\rVert^2\)</td></tr>
+              <td>\(\lVert v^{P}_{d,xy}\rVert < 0.03 \;\wedge\; \lvert\omega^{P}_{d,z}\rvert > 0.1\)</td>
+              <td>\(\lVert v^{P}_{xy}\rVert^2\)</td></tr>
           <tr><td>Standing yaw rate</td><td class="num">&minus;2.5</td>
-              <td>\(\lVert c_{xy}\rVert < 0.03 \wedge \lvert\omega_z^{\text{cmd}}\rvert < 0.03\)</td>
-              <td>\(\omega_z^2\)</td></tr>
+              <td>\(\lVert v^{P}_{d,xy}\rVert < 0.03 \;\wedge\; \lvert\omega^{P}_{d,z}\rvert < 0.03\)</td>
+              <td>\(\left(\omega^{P}_{z}\right)^2\)</td></tr>
         </tbody>
       </table>
     </div>
