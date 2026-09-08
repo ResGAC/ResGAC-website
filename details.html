@@ -250,31 +250,44 @@
     </ol>
 
     <h3>2.2 Actor observations (16 terms)</h3>
+    <p class="small">
+      The <b>Symbol</b> column is the corresponding entry of \(o_t\) in the paper. Four config
+      terms together make up the task command \(c_t\); the rest map one to one.
+    </p>
     <div class="tablewrap">
       <table>
-        <thead><tr><th>Term</th><th>Dim</th><th>Scale</th><th>Noise</th><th>Definition</th></tr></thead>
+        <thead><tr><th>Term</th><th>Symbol</th><th>Dim</th><th>Scale</th><th>Noise</th><th>Definition</th></tr></thead>
         <tbody>
-          <tr><td><code>arm_command</code></td><td class="num">18</td><td class="num">1.0</td><td class="num">0</td>
-              <td>Target pose per arm: 3 position + 6D rotation, in the manipulation frame.</td></tr>
-          <tr><td><code>ee_error_pose</code></td><td class="num">18</td><td class="num">1.0</td><td class="num">0</td>
-              <td>Per arm: \(R_{RD}^{\top}(p_{RE} - p_{RD})\) and the 6D form of \(R_{RD}^{\top}R_{RE}\). <b>The position error is rotated into the target frame</b>, so the error is expressed in the frame the command defines rather than the robot's.</td></tr>
-          <tr><td><code>ee_error_pose_tanh</code></td><td class="num">6</td><td class="num">1.0</td><td class="num">0</td>
-              <td>\(\tanh(p_{DE}/\tau)\) per component, \(\tau = 0.01\) &mdash; equivalently \(\tanh(100\,p_{DE})\). Saturates beyond ~2 cm, so it is a high-gain channel for the last millimetres. Position only; no rotation counterpart.</td></tr>
-          <tr><td><code>command_lin_vel</code></td><td class="num">2</td><td class="num">1.0</td><td class="num">0</td><td>\(c_{xy}\).</td></tr>
-          <tr><td><code>command_ang_vel</code></td><td class="num">1</td><td class="num">1.0</td><td class="num">0</td><td>\(\omega_z^{\text{cmd}}\).</td></tr>
-          <tr><td><code>projected_gravity</code></td><td class="num">3</td><td class="num">1.0</td><td class="num">0.001</td><td>\(R_{WP}^{\top}(0,0,-1)^{\top}\).</td></tr>
-          <tr><td><code>base_ang_vel</code></td><td class="num">3</td><td class="num">0.25</td><td class="num">0.01</td><td>Root angular velocity in the base frame. Available from the IMU at deployment.</td></tr>
-          <tr><td><code>dof_pos_relative</code></td><td class="num">29</td><td class="num">1.0</td><td class="num">0.01</td><td>\(q - q^{\text{def}}\).</td></tr>
-          <tr><td><code>dof_vel</code></td><td class="num">29</td><td class="num">0.05</td><td class="num">0.05</td><td>Measured joint velocity. The largest noise level in the group, matching how poorly this signal is estimated on hardware.</td></tr>
-          <tr><td><code>last_action</code></td><td class="num">29</td><td class="num">1.0</td><td class="num">0</td>
+          <tr><td><code>arm_command</code></td><td>\(g_{RD}\) in \(c_t\)</td><td class="num">18</td><td class="num">1.0</td><td class="num">0</td>
+              <td>Desired end-effector pose per arm in \(\{R\}\): 3 position + 6D rotation.</td></tr>
+          <tr><td><code>command_lin_vel</code></td><td>\(v^{P}_{d,xy}\) in \(c_t\)</td><td class="num">2</td><td class="num">1.0</td><td class="num">0</td>
+              <td>Commanded planar velocity \((v^{P}_{d,x}, v^{P}_{d,y})\).</td></tr>
+          <tr><td><code>command_ang_vel</code></td><td>\(\omega^{P}_{d,z}\) in \(c_t\)</td><td class="num">1</td><td class="num">1.0</td><td class="num">0</td>
+              <td>Commanded yaw rate.</td></tr>
+          <tr><td><code>base_height_command</code></td><td>\(z^{P}_{d}\) in \(c_t\)</td><td class="num">1</td><td class="num">1.0</td><td class="num">0</td>
+              <td>Commanded pelvis height, randomized by the curriculum.</td></tr>
+          <tr><td><code>ee_error_pose</code></td><td>\(g_{DE,t}\)</td><td class="num">18</td><td class="num">1.0</td><td class="num">0</td>
+              <td>Per arm: \(R_{RD}^{\top}(p_{RE} - p_{RD})\) and the 6D form of \(R_{RD}^{\top}R_{RE}\). <b>The position error is rotated into the desired frame</b>, so it is expressed in the frame the command defines rather than the robot's.</td></tr>
+          <tr><td><code>ee_error_pose_tanh</code></td><td>\(p^{\mathrm{sat}}_{DE,t}\)</td><td class="num">6</td><td class="num">1.0</td><td class="num">0</td>
+              <td>\(\tanh(p_{DE,t}/\tau)\) per component with \(\tau = 0.01\), i.e. \(\tanh(100\,p_{DE,t})\). Saturates beyond ~2 cm, so it is a high-gain channel for the last millimetres. Position only; no rotation counterpart.</td></tr>
+          <tr><td><code>controller_arm_joint_command</code></td><td>\(a_{\mathrm{GAC},t}\)</td><td class="num">14</td><td class="num">1.0</td><td class="num">0</td>
+              <td>The nominal command the residual is correcting. Cached, not recomputed.</td></tr>
+          <tr><td><code>ee_body_twist</code></td><td>\(V^{E}_{RE,t}\)</td><td class="num">12</td><td class="num">0.05</td><td class="num">0.02</td>
+              <td>Both arms &mdash; the actor's copy, built with the base linear velocity omitted because it is not measurable at deployment.</td></tr>
+          <tr><td><code>dof_pos_relative</code></td><td>\(q_t\)</td><td class="num">29</td><td class="num">1.0</td><td class="num">0.01</td>
+              <td>Supplied as \(q_t - q^{\mathrm{def}}\), the offset from the default pose.</td></tr>
+          <tr><td><code>dof_vel</code></td><td>\(\dot q_t\)</td><td class="num">29</td><td class="num">0.05</td><td class="num">0.05</td>
+              <td>Measured joint velocity. The largest noise level in the group, matching how poorly this signal is estimated on hardware.</td></tr>
+          <tr><td><code>projected_gravity</code></td><td>\(g^{\mathrm{proj}}_{t}\)</td><td class="num">3</td><td class="num">1.0</td><td class="num">0.001</td>
+              <td>The pelvis projected gravity \(g^{P}\) of &sect;1.</td></tr>
+          <tr><td><code>base_ang_vel</code></td><td>\(\omega_t\)</td><td class="num">3</td><td class="num">0.25</td><td class="num">0.01</td>
+              <td>Floating-base angular velocity in the base frame. Obtained from the IMU at deployment, which is why only the angular components are used.</td></tr>
+          <tr><td><code>last_action</code></td><td>\(a_{\mathrm{RL},t-1}\)</td><td class="num">29</td><td class="num">1.0</td><td class="num">0</td>
               <td><b>Not the raw action.</b> Resolves to <code>last_residual_policy_action</code>: the 15 non-arm targets concatenated with the 14 <em>post-scale</em> arm residuals. Same width as the raw action, different content.</td></tr>
-          <tr><td><code>prev_prev_action</code></td><td class="num">29</td><td class="num">1.0</td><td class="num">0</td><td>The raw 29-channel action two steps back, needed by the mean-action acceleration penalty.</td></tr>
-          <tr><td><code>controller_arm_joint_command</code></td><td class="num">14</td><td class="num">1.0</td><td class="num">0</td>
-              <td>\(a_{\text{GAC}}\), the nominal command the residual is correcting. Cached, not recomputed.</td></tr>
-          <tr><td><code>ee_body_twist</code></td><td class="num">12</td><td class="num">0.05</td><td class="num">0.02</td>
-              <td>Controller-side \(V^{E}_{RE}\) for both arms &mdash; the actor's copy, built with base linear velocity omitted because it is not measurable at deployment.</td></tr>
-          <tr><td><code>sin_phase</code>, <code>cos_phase</code></td><td class="num">2 + 2</td><td class="num">1.0</td><td class="num">0</td><td>\(\sin\phi\), \(\cos\phi\) per leg.</td></tr>
-          <tr><td><code>base_height_command</code></td><td class="num">1</td><td class="num">1.0</td><td class="num">0</td><td>Commanded pelvis height.</td></tr>
+          <tr><td><code>prev_prev_action</code></td><td>\(a_{\mathrm{RL},t-2}\)</td><td class="num">29</td><td class="num">1.0</td><td class="num">0</td>
+              <td>The raw 29-channel action two steps back, required by the mean-action acceleration penalty.</td></tr>
+          <tr><td><code>sin_phase</code>, <code>cos_phase</code></td><td>\(\phi_t\)</td><td class="num">2 + 2</td><td class="num">1.0</td><td class="num">0</td>
+              <td>\(\sin\phi_t\), \(\cos\phi_t\) per leg &mdash; the gait state supplied as its sinusoidal phase variables.</td></tr>
         </tbody>
       </table>
     </div>
