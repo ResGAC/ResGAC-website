@@ -32,14 +32,14 @@
     This page is a supplement, not a summary. The method, the GAC derivation, the frame
     construction, the symmetry losses, and the curriculum schedule are in the paper and are not
     repeated here. What follows is the material a page limit forces out: the exact definition of
-    all 31 reward signals, the observation pre-processing, and the settings that make the
+    all 25 reward terms, the observation pre-processing, and the settings that make the
     comparison against E2E-RL controlled.
   </p>
 
   <div class="toc">
     <h2>Contents</h2>
     <ol>
-      <li><a href="#rewards">Complete reward specification &mdash; all 31 terms</a></li>
+      <li><a href="#rewards">Complete reward specification &mdash; all 25 terms</a></li>
       <li><a href="#obs">Observation specification and pre-processing</a></li>
       <li><a href="#action">Action scaling</a></li>
       <li><a href="#curriculum">Curriculum details not in Table&nbsp;II</a></li>
@@ -54,179 +54,149 @@
   <div class="section" id="rewards">
     <h2>1. Complete reward specification</h2>
     <p>
-      Table&nbsp;I lists names, forms, and weights. Below is the definition of each of the 31
-      registered terms as implemented, including the four that are registered but carry zero
-      weight in the reported configuration. Notation: \(N\) is the number of environments,
-      \(i \in \{l, r\}\) indexes arms or feet, \(q\) joint positions, \(v_{xy}\) and \(\omega_z\)
-      body-frame planar and yaw velocity, \(c = (c_{xy}, \omega_z^{\text{cmd}})\) the locomotion
-      command, and \(\phi \in [-\pi, \pi]^2\) the per-leg gait phase.
+      Table&nbsp;I gives names, forms, and weights. Below is the definition of each of its 25 terms
+      as implemented, in the same order and under the same names. Notation follows the paper:
+      \(i \in \{l, r\}\) indexes arms or feet, \(q\) are joint positions, \(v_{xy}\) and
+      \(\omega_z\) the body-frame planar and yaw velocity, \(c = (c_{xy}, \omega_z^{\text{cmd}})\)
+      the locomotion command, \(\mu_t = \mu_\theta(o_t)\) the mean policy action, and
+      \(\phi \in [-\pi, \pi]^2\) the per-leg gait phase.
     </p>
 
-    <h3>1.1 Manipulation (2 terms)</h3>
+    <h3>1.1 Manipulation</h3>
     <div class="tablewrap">
       <table>
-        <thead><tr><th>Term</th><th>\(w\)</th><th>Definition</th></tr></thead>
+        <thead><tr><th>Term</th><th>\(w_i\)</th><th>Definition</th></tr></thead>
         <tbody>
           <tr>
-            <td><code>tracking_ee_pos</code></td><td class="num">4.0</td>
-            <td>\(\exp\!\left(-\dfrac{e_2}{\sigma_2} - \dfrac{e_1}{\sqrt{3}\,\sigma_1}\right)\),
-                \(e_2 = \operatorname{mean}_i \lVert p_i - p_i^{*}\rVert_2^2\),
-                \(e_1 = \operatorname{mean}_i \lVert p_i - p_i^{*}\rVert_1\).
-                Stages A&ndash;D use the \(L_2^2\)-only form \(\exp(-e_2/\sigma_P)\).
-                Setting \(\sigma_1 \le 0\) disables the \(L_1\) term, which is how the baseline
-                runs (&sect;6).</td>
+            <td>EEF position</td><td class="num">4.0</td>
+            <td>\(\exp\!\left(-\dfrac{e_{2,t}}{\sigma_2} - \dfrac{e_{1,t}}{\sqrt{3}\,\sigma_1}\right)\).
+                Stages A&ndash;D use the \(L_2^2\)-only form \(\exp(-e_{2,t}/\sigma_P)\).
+                Setting \(\sigma_1 \le 0\) removes the \(L_1\) term, which is how the baseline runs
+                in stages E&ndash;F (&sect;6).</td>
           </tr>
           <tr>
-            <td><code>tracking_ee_rot</code></td><td class="num">3.0</td>
-            <td>\(\exp(-e_R/\sigma_R)\), \(e_R = \operatorname{mean}_i\left(3 - \operatorname{tr}(R_i^{\top} R_i^{*})\right)\).
-                Both poses are taken in the manipulation frame; \(R^{*}\) is reconstructed from the
-                6D rotation representation carried in the command.</td>
+            <td>EEF orientation</td><td class="num">3.0</td>
+            <td>\(\exp\!\left(-\operatorname{mean}_i\left(3 - \operatorname{tr}(R_{DE_i,t})\right)/\sigma_R\right)\).
+                Both poses are taken in the manipulation frame; the target rotation is
+                reconstructed from the 6D representation carried in the command.</td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <h3>1.2 Locomotion (6 terms)</h3>
+    <h3>1.2 Locomotion</h3>
     <div class="tablewrap">
       <table>
-        <thead><tr><th>Term</th><th>\(w\)</th><th>Definition</th></tr></thead>
+        <thead><tr><th>Term</th><th>\(w_i\)</th><th>Definition</th></tr></thead>
         <tbody>
-          <tr><td><code>tracking_lin_vel</code></td><td class="num">2.0</td>
-              <td>\(\exp\!\left(-\lVert c_{xy} - v_{xy}\rVert^2/\sigma_v\right)\). \(v_{xy}\) is the root linear velocity rotated into the base frame.</td></tr>
-          <tr><td><code>tracking_ang_vel</code></td><td class="num">1.5</td>
-              <td>\(\exp\!\left(-(\omega_z^{\text{cmd}} - \omega_z)^2/\sigma_\omega\right)\), \(\sigma_\omega = 0.25\) throughout.</td></tr>
-          <tr><td><code>feet_phase</code></td><td class="num">5.0</td>
-              <td>\(\exp\!\left(-\left[(z_l - z_l^{*})^2 + (z_r - z_r^{*})^2\right]/\sigma\right)\), \(\sigma = 0.008\).
-                  Foot heights are measured relative to the terrain. See &sect;1.6 for \(z^{*}\).</td></tr>
-          <tr><td><code>tracking_orientation</code></td><td class="num">1.0</td>
-              <td>\(\exp\!\left(-\lVert g^{P}_{xy}\rVert^2/\sigma\right)\), \(g^{P} = R_{WP}^{\top}(0,0,-1)^{\top}\) &mdash; pelvis uprightness.</td></tr>
-          <tr><td><code>tracking_torso_orientation</code></td><td class="num">1.0</td>
-              <td>Same kernel evaluated at <code>torso_link</code>, so waist lean is penalized independently of pelvis tilt.</td></tr>
-          <tr><td><code>tracking_base_height</code></td><td class="num">1.0</td>
-              <td>\(\exp\!\left(-(100 \cdot (z_P - z^{*}_P))^2/\sigma\right)\), \(\sigma = 3.0\).
-                  <b>The error is converted to centimetres before squaring</b>, so \(\sigma = 3.0\) is \(3\ \text{cm}^2\), not \(3\ \text{m}^2\).
-                  \(z^{*}_P\) is the commanded height, which the curriculum randomizes.</td></tr>
+          <tr><td>Linear velocity</td><td class="num">2.0</td>
+              <td>\(\exp\!\left(-\lVert c_{xy} - v_{xy}\rVert^2/\sigma_v\right)\), with \(v_{xy}\) the root linear velocity rotated into the base frame.</td></tr>
+          <tr><td>Angular velocity</td><td class="num">1.5</td>
+              <td>\(\exp\!\left(-(\omega_z^{\text{cmd}} - \omega_z)^2/\sigma_\omega\right)\), \(\sigma_\omega = 0.25\) throughout the curriculum.</td></tr>
+          <tr><td>Swing-foot trajectory</td><td class="num">5.0</td>
+              <td>\(\exp\!\left(-\left[(z_l - z_l^{*})^2 + (z_r - z_r^{*})^2\right]/\sigma\right)\), \(\sigma = 0.008\), foot heights measured relative to the terrain. The reference \(z^{*}\) is defined below.</td></tr>
+          <tr><td>Pelvis orientation</td><td class="num">1.0</td>
+              <td>\(\exp\!\left(-\lVert g^{P}_{xy}\rVert^2/\sigma\right)\) with \(g^{P} = R_{WP}^{\top}(0,0,-1)^{\top}\).</td></tr>
+          <tr><td>Torso orientation</td><td class="num">1.0</td>
+              <td>The same kernel evaluated at the torso link, so waist lean is scored independently of pelvis tilt.</td></tr>
+          <tr><td>Base height</td><td class="num">1.0</td>
+              <td>\(\exp\!\left(-(100\,(z_P - z^{*}_P))^2/\sigma\right)\), \(\sigma = 3.0\). <b>The error is converted to centimetres before squaring</b>, so \(\sigma\) is \(3\ \mathrm{cm}^2\), not \(3\ \mathrm{m}^2\). \(z^{*}_P\) is the commanded height, which the curriculum randomizes.</td></tr>
         </tbody>
       </table>
     </div>
 
-    <h3>1.3 Regularization &mdash; action and posture (8 terms)</h3>
+    <h3>1.3 Regularization &mdash; action and posture</h3>
     <div class="tablewrap">
       <table>
-        <thead><tr><th>Term</th><th>\(w\)</th><th>Definition</th></tr></thead>
+        <thead><tr><th>Term</th><th>\(w_i\)</th><th>Definition</th></tr></thead>
         <tbody>
-          <tr><td><code>penalty_arm_residual_l2</code></td><td class="num">&minus;0.05</td>
-              <td>\(\lVert r_{\text{arm}}\rVert^2\), where \(r_{\text{arm}}\) is the buffer the action term stores &mdash; the residual <b>after</b> clipping and scaling, i.e. \(s\cdot\operatorname{clip}(a,\pm c)\) with \(s = 3\). It is therefore \(9\lVert\operatorname{clip}(a)\rVert^2\) in raw policy-output units.</td></tr>
-          <tr><td><code>penalty_ee_body_twist</code></td><td class="num">&minus;0.05</td>
-              <td>\(\sum_i \lVert V^{E}_{RE,i}\rVert^2\) over both arms, read from the controller's ground-truth twist \(V^{E,\text{true}}_{RE}\) (the noise-free one, not the actor's copy). Falls back to a rigid-body computation when no controller is present.</td></tr>
-          <tr><td><code>penalty_arm_action_rate</code></td><td class="num">&minus;0.5</td>
-              <td>\(\lVert a^{\text{arm}}_t - a^{\text{arm}}_{t-1}\rVert^2\) over the 14 arm channels of the raw action.</td></tr>
-          <tr><td><code>penalty_leg_action_rate</code></td><td class="num">&minus;1.0</td>
-              <td>Same over the 12 leg channels. Table&nbsp;I calls this "non-arm action rate".</td></tr>
-          <tr><td><code>penalty_mean_action_accel_arm</code></td><td class="num">&minus;0.10</td>
-              <td>\(\lVert \mu_t - 2\mu_{t-1} + \mu_{t-2}\rVert^2\) over arm channels. \(\mu\) is the <b>deterministic policy mean</b> supplied by the algorithm, not the sampled action &mdash; penalizing the sample's second difference would mostly penalize exploration noise.</td></tr>
-          <tr><td><code>penalty_mean_action_accel_leg</code></td><td class="num">&minus;0.10</td>
-              <td>Same over leg channels. Table&nbsp;I's single "mean-action accel." row covers both; they are two separately registered terms with equal weight.</td></tr>
-          <tr><td><code>penalty_arm_dof_vel</code></td><td class="num">&minus;0.05</td>
-              <td>\(\sum_{j \in \text{arm}} \dot q_j^2\), measured joint velocity, not commanded.</td></tr>
-          <tr><td><code>penalty_pose_deviation</code></td><td class="num">&minus;1.0</td>
-              <td>\(\sum_j w_j (q_j - q_j^{\text{def}})^2\) with per-DOF weights. Arm weights are forced to zero (<code>include_arm_dofs=False</code>), so this shapes legs and waist only.
-                  Weights: hip pitch 0.01, hip roll 1.0, hip yaw 5.0, knee 0.01, ankle pitch/roll 5.0 (per leg), waist yaw/roll/pitch 50.0.</td></tr>
+          <tr><td>Arm residual</td><td class="num">&minus;0.05</td>
+              <td>\(\lVert a_{\mathrm{RL,arm},t}\rVert^2\) evaluated on the buffered residual, which the action term stores <b>after</b> clipping and scaling. It is therefore \(s^2\lVert\operatorname{clip}(a_{\mathrm{RL,arm}},\pm c_r)\rVert^2\) with \(s = 3\) &mdash; a factor of 9 relative to the raw policy output.</td></tr>
+          <tr><td>EEF body twist</td><td class="num">&minus;0.05</td>
+              <td>\(\sum_i \lVert V^{E}_{RE,i}\rVert^2\) over both arms, read from the controller's ground-truth twist rather than the actor's copy. Falls back to a rigid-body computation when no controller is present.</td></tr>
+          <tr><td>Arm action rate</td><td class="num">&minus;0.5</td>
+              <td>\(\lVert \Delta a_t\rVert^2\) over the 14 arm channels of the raw action.</td></tr>
+          <tr><td>Non-arm action rate</td><td class="num">&minus;1.0</td>
+              <td>The same over the 12 leg channels.</td></tr>
+          <tr><td>Mean-action accel.</td><td class="num">&minus;0.10</td>
+              <td>\(\lVert \Delta^2\mu_t\rVert^2 = \lVert \mu_t - 2\mu_{t-1} + \mu_{t-2}\rVert^2\). Registered as two terms of equal weight, one over arm channels and one over non-arm channels. \(\mu\) is the <b>deterministic policy mean</b> supplied by the algorithm, not the sampled action &mdash; differencing the sample would mostly penalize exploration noise.</td></tr>
+          <tr><td>Arm joint velocity</td><td class="num">&minus;0.05</td>
+              <td>\(\sum_{j\in\text{arm}} \dot q_j^2\), measured joint velocity rather than commanded.</td></tr>
+          <tr><td>Pose deviation</td><td class="num">&minus;1.0</td>
+              <td>\(\sum_j w_j (q_j - q_j^{\text{def}})^2\). Arm weights are forced to zero, so this shapes legs and waist only. Per-DOF weights: hip pitch 0.01, hip roll 1.0, hip yaw 5.0, knee 0.01, ankle pitch and roll 5.0 (each leg); waist yaw, roll, pitch 50.0.</td></tr>
+          <tr><td>Joint-position limit</td><td class="num">&minus;1.0</td>
+              <td>\(\sum_j \left[(q^{\text{lo}}_j - q_j)_+ + (q_j - q^{\text{hi}}_j)_+\right]\) &mdash; <b>linear</b> excess, not squared. The soft bounds are the hardware limits shrunk about their midpoint, \(q^{\text{lo/hi}} = m \mp 0.5\,\rho\,r\), with \(\rho = 0.95\).</td></tr>
         </tbody>
       </table>
     </div>
 
-    <h3>1.4 Regularization &mdash; limits, feet, survival (5 terms)</h3>
+    <h3>1.4 Regularization &mdash; feet and survival</h3>
     <div class="tablewrap">
       <table>
-        <thead><tr><th>Term</th><th>\(w\)</th><th>Definition</th></tr></thead>
+        <thead><tr><th>Term</th><th>\(w_i\)</th><th>Definition</th></tr></thead>
         <tbody>
-          <tr><td><code>penalty_dof_pos_limits</code></td><td class="num">&minus;1.0</td>
-              <td>\(\sum_j \left[(q^{\text{lo}}_j - q_j)_+ + (q_j - q^{\text{hi}}_j)_+\right]\), <b>linear</b> excess, not squared. Soft limits are the hardware limits shrunk about their midpoint: \(q^{\text{lo/hi}} = m \mp 0.5\,\rho\,r\) with \(m\) the midpoint, \(r\) the range, \(\rho = 0.95\).</td></tr>
-          <tr><td><code>penalty_close_feet_xy</code></td><td class="num">&minus;10</td>
-              <td>Indicator \(\mathbb{1}[d < 0.15\ \text{m}]\), \(d = \lvert \cos\psi\,\Delta y - \sin\psi\,\Delta x\rvert\): the foot separation projected onto the base's lateral axis, so it measures crossing rather than absolute distance. Binary, not graded.</td></tr>
-          <tr><td><code>penalty_feet_ori</code></td><td class="num">&minus;5</td>
-              <td>\(\sum_i \lVert g^{\text{foot}}_{i,xy}\rVert\) &mdash; the <b>norm</b>, not its square. Linear growth keeps a constant gradient as tilt shrinks.</td></tr>
-          <tr><td><code>alive</code></td><td class="num">+10</td>
-              <td>Constant \(1\) per step.</td></tr>
-          <tr><td><code>penalty_termination</code></td><td class="num">&minus;200</td>
-              <td>\(\mathbb{1}[\text{reset} \wedge \neg\text{timeout}]\) &mdash; fires on failure resets only; a clean 1000-step timeout costs nothing.</td></tr>
+          <tr><td>Foot proximity</td><td class="num">&minus;10</td>
+              <td>The indicator \(\mathbb{1}[d < 0.15\ \mathrm{m}]\), where \(d = \lvert\cos\psi\,\Delta y - \sin\psi\,\Delta x\rvert\) is the foot separation projected onto the base lateral axis. It measures crossing rather than absolute distance, and it is binary, not graded.</td></tr>
+          <tr><td>Foot orientation</td><td class="num">&minus;5</td>
+              <td>\(\sum_i \lVert g^{\text{foot}}_{i,xy}\rVert\) &mdash; the <b>norm</b>, not its square, so the gradient does not vanish as the tilt shrinks.</td></tr>
+          <tr><td>Alive / termination</td><td class="num">10 / &minus;200</td>
+              <td>A constant \(+1\) per step, and a one-shot \(\mathbb{1}[\text{reset} \wedge \neg\text{timeout}]\) on failure resets. A clean 1000-step timeout costs nothing.</td></tr>
         </tbody>
       </table>
     </div>
 
-    <h3>1.5 Regularization &mdash; command-gated locomotion penalties (4 active, 3 inactive)</h3>
+    <h3>1.5 Regularization &mdash; command-gated locomotion</h3>
     <p class="small">
-      Each is masked by the commanded behaviour, so a term is inert unless the command puts the
-      robot in the regime it polices. Thresholds: \(\varepsilon_v = 0.03\) or \(0.05\) m/s on
-      \(\lVert c_{xy}\rVert\), \(\varepsilon_\omega = 0.03\) or \(0.1\) rad/s on \(\lvert\omega_z^{\text{cmd}}\rvert\).
+      Each is masked by the commanded behaviour, so the term is inert unless the command puts the
+      robot in the regime it polices.
     </p>
     <div class="tablewrap">
       <table>
-        <thead><tr><th>Term</th><th>\(w\)</th><th>Mask</th><th>Penalized quantity</th></tr></thead>
+        <thead><tr><th>Term</th><th>\(w_i\)</th><th>Mask</th><th>Penalized quantity</th></tr></thead>
         <tbody>
-          <tr><td><code>penalty_straight_walk_yaw_leakage_gait_avg</code></td><td class="num">&minus;10</td>
+          <tr><td>Heading leakage</td><td class="num">&minus;10</td>
               <td>\(\lVert c_{xy}\rVert > 0.05 \wedge \lvert\omega_z^{\text{cmd}}\rvert < 0.03\)</td>
               <td>\(\bar\omega_z^2 + 0.15\,\omega_z^2\)</td></tr>
-          <tr><td><code>penalty_lateral_velocity_gait_avg</code></td><td class="num">&minus;2</td>
+          <tr><td>Lateral leakage</td><td class="num">&minus;2</td>
               <td>\(\lVert c_{xy}\rVert > 0.03\)</td>
-              <td>\(\bar v_\perp^2 + 0.15\,v_\perp^2\), \(v_\perp = \hat c_x v_y - \hat c_y v_x\) (signed)</td></tr>
-          <tr><td><code>penalty_turn_in_place_leakage</code></td><td class="num">&minus;2.5</td>
+              <td>\(\bar v_\perp^2 + 0.15\,v_\perp^2\), with the signed \(v_\perp = \hat c_x v_y - \hat c_y v_x\)</td></tr>
+          <tr><td>Turn-in-place leakage</td><td class="num">&minus;2.5</td>
               <td>\(\lVert c_{xy}\rVert < 0.03 \wedge \lvert\omega_z^{\text{cmd}}\rvert > 0.1\)</td>
               <td>\(\lVert v_{xy}\rVert^2\)</td></tr>
-          <tr><td><code>penalty_standing_ang_vel</code></td><td class="num">&minus;2.5</td>
+          <tr><td>Standing yaw rate</td><td class="num">&minus;2.5</td>
               <td>\(\lVert c_{xy}\rVert < 0.03 \wedge \lvert\omega_z^{\text{cmd}}\rvert < 0.03\)</td>
               <td>\(\omega_z^2\)</td></tr>
-          <tr><td><code>penalty_straight_walk_yaw_leakage</code></td><td class="num">0</td>
-              <td>as the gait-averaged variant</td>
-              <td>\(\omega_z^2\) &mdash; <b>zeroed</b>; replaced by the averaged form</td></tr>
-          <tr><td><code>penalty_lateral_velocity</code></td><td class="num">0</td>
-              <td>\(\lVert c_{xy}\rVert > 0.03\)</td>
-              <td>\(\lVert v_{xy} - (v_{xy}\!\cdot\!\hat c)\hat c\rVert^2\) &mdash; <b>zeroed</b>. Note this is the vector rejection, whereas the averaged variant uses the signed scalar \(v_\perp\).</td></tr>
-          <tr><td><code>penalty_heading_hold</code></td><td class="num">0</td>
-              <td>latched straight-walk regime</td>
-              <td>Accumulated yaw drift from a heading latched at the start of the straight-walk segment. Registered but never enabled.</td></tr>
         </tbody>
       </table>
     </div>
     <p class="small">
-      <b>Gait-cycle averaging.</b> \(\bar\cdot\) is the running mean over the current gait cycle,
-      maintained by a command-manager term. It accumulates only while the gait phase advances
-      (standing contributes nothing), flushes when the left-leg phase crosses zero upward, and
-      falls back to the previous cycle's mean during the first 5 samples of a new cycle. The
-      \(0.15\times\) instantaneous companion keeps a dense per-step gradient while the mean targets
-      net drift.
+      <b>Gait-cycle averaging.</b> \(\bar\cdot\) denotes the running mean \(\bar e_k\) over the
+      current gait cycle, maintained by a command-manager term. It accumulates only while the gait
+      phase advances, so standing contributes nothing; it flushes when the left-leg phase crosses
+      zero upward; and during the first 5 samples of a new cycle it falls back to the previous
+      cycle's mean. The \(0.15\times\) instantaneous companion preserves a dense per-step gradient
+      while the mean targets net drift.
     </p>
 
-    <h3>1.6 Impact handling (2 active, 1 inactive)</h3>
+    <h3>1.6 Impact handling</h3>
     <div class="tablewrap">
       <table>
-        <thead><tr><th>Term</th><th>\(w\)</th><th>Definition</th></tr></thead>
+        <thead><tr><th>Term</th><th>\(w_i\)</th><th>Definition</th></tr></thead>
         <tbody>
-          <tr><td><code>penalty_foot_contact_force</code></td><td class="num">&minus;2</td>
-              <td>\(\sum_i \left(\dfrac{(F^{\text{peak}}_{z,i} - F_{\text{th}})_+}{F_{\text{th}}}\right)^2\), \(F_{\text{th}} = 400\) N.
-                  \(F^{\text{peak}}_z\) is the maximum over <b>all physics substeps</b> in the control interval, read from a contact-force history buffer, not the value sampled at the control tick. The term raises an error if the buffer is shorter than the decimation, so a hard strike cannot be missed.</td></tr>
-          <tr><td><code>penalty_foot_pretouchdown_velocity</code></td><td class="num">&minus;2</td>
-              <td>\(\sum_i \mathbb{1}[\text{active}_i]\,\left((-\dot z_i) - 0.15\right)_+^2\).
-                  \(\text{active}_i\) requires all three: airborne (\(F_z < 5\) N), near ground (height \(< 0.05\) m), and a non-trivial velocity command (\(> 0.03\) m/s). Mid-swing descent is unpenalized.</td></tr>
-          <tr><td><code>penalty_foot_touchdown_shock</code></td><td class="num">0</td>
-              <td>One-shot on the contact rising edge: \(\sum_i \mathbb{1}[\text{touchdown}_i]\left((-\dot z_i) - 0.25\right)_+^2\). Registered but disabled &mdash; the two terms above cover impact from the force and the approach side respectively.</td></tr>
+          <tr><td>Foot contact force</td><td class="num">&minus;2</td>
+              <td>\(\sum_i \left(\dfrac{(F^{\text{peak}}_{z,i} - F_{\text{th}})_+}{F_{\text{th}}}\right)^2\), \(F_{\text{th}} = 400\ \mathrm{N}\). \(F^{\text{peak}}_z\) is the maximum over <b>all physics substeps</b> of the control interval, read from a contact-force history buffer rather than sampled at the control tick. The term raises an error if that buffer is shorter than the decimation, so a single-substep strike cannot be missed.</td></tr>
+          <tr><td>Pre-touchdown velocity</td><td class="num">&minus;2</td>
+              <td>\(\sum_i \mathbb{1}[\text{active}_i]\left((-\dot z_i) - 0.15\right)_+^2\), where \(\text{active}_i\) requires all three of: airborne (\(F_z < 5\ \mathrm{N}\)), near ground (clearance \(< 0.05\ \mathrm{m}\)), and a non-trivial velocity command (\(> 0.03\ \mathrm{m/s}\)). Mid-swing descent is unpenalized.</td></tr>
         </tbody>
       </table>
     </div>
-    <p class="small">
-      <b>Swing reference \(z^{*}\).</b> The <code>feet_phase</code> target is a two-piece cubic
-      B&eacute;zier over the normalized phase \(x = (\phi + \pi)/2\pi\), with
-      \(b(x) = x^3 + 3x^2(1-x)\): rising \(0 \to h\) via \(b(2x)\) for \(x \le 0.5\), falling
-      \(h \to 0\) via \(b(2x-1)\) after, with \(h = 0.09\) m. The profile is
-      \(C^1\) at the peak and flat at both ends, so the commanded vertical velocity is zero at
-      liftoff and touchdown.
-    </p>
 
     <p class="small">
-      <b>Count.</b> 2 manipulation + 6 locomotion + 8 action/posture + 5 limits/feet/survival +
-      7 command-gated + 3 impact = <b>31 registered terms</b>, of which 27 carry non-zero weight in
-      the reported configuration.
+      <b>Swing-foot reference.</b> The reference \(z^{*}\) is a two-piece cubic B&eacute;zier over
+      the normalized phase \(x = (\phi + \pi)/2\pi\) with \(b(x) = x^3 + 3x^2(1-x)\): rising
+      \(0 \to h\) via \(b(2x)\) for \(x \le 0.5\), falling \(h \to 0\) via \(b(2x-1)\) after, with
+      peak height \(h = 0.09\ \mathrm{m}\). It is flat at both ends, so the commanded vertical
+      velocity is zero at liftoff and at touchdown.
     </p>
   </div>
 
@@ -331,10 +301,10 @@
       <table>
         <thead><tr><th>Term</th><th>Field</th><th>Start &rarr; End</th><th>Ramp window</th></tr></thead>
         <tbody>
-          <tr><td><code>tracking_ee_pos</code></td><td>tracking_sigma</td><td class="num">0.005 &rarr; 0.001</td><td class="num">20% &ndash; 70%</td></tr>
-          <tr><td><code>tracking_ee_rot</code></td><td>tracking_sigma</td><td class="num">0.10 &rarr; 0.02</td><td class="num">20% &ndash; 70%</td></tr>
-          <tr><td><code>tracking_lin_vel</code></td><td>tracking_sigma</td><td class="num">0.25 &rarr; 0.10</td><td class="num">20% &ndash; 80%</td></tr>
-          <tr><td><code>penalty_arm_residual_l2</code></td><td>weight</td><td class="num">&minus;0.10 &rarr; &minus;0.05</td><td class="num">0% &ndash; 50%</td></tr>
+          <tr><td>EEF position</td><td>tracking_sigma</td><td class="num">0.005 &rarr; 0.001</td><td class="num">20% &ndash; 70%</td></tr>
+          <tr><td>EEF orientation</td><td>tracking_sigma</td><td class="num">0.10 &rarr; 0.02</td><td class="num">20% &ndash; 70%</td></tr>
+          <tr><td>Linear velocity</td><td>tracking_sigma</td><td class="num">0.25 &rarr; 0.10</td><td class="num">20% &ndash; 80%</td></tr>
+          <tr><td>Arm residual</td><td>weight</td><td class="num">&minus;0.10 &rarr; &minus;0.05</td><td class="num">0% &ndash; 50%</td></tr>
         </tbody>
       </table>
     </div>
@@ -459,7 +429,7 @@
       <table>
         <thead><tr><th>Term</th><th>ManTra</th><th>E2E-RL</th></tr></thead>
         <tbody>
-          <tr><td><code>penalty_arm_residual_l2</code> function</td><td><code>..._l2</code></td><td><code>..._l2_weighted</code></td></tr>
+          <tr><td>Arm residual, form</td><td class="num">\(L_2^2\)</td><td class="num">per-DOF weighted \(L_2^2\)</td></tr>
           <tr><td>&nbsp;&nbsp;config weight</td><td class="num">&minus;0.05</td><td class="num">&minus;0.01</td></tr>
           <tr><td>&nbsp;&nbsp;launch-script override</td><td class="num">none</td><td class="num">&minus;0.5, all stages</td></tr>
           <tr><td>&nbsp;&nbsp;per-DOF weights</td><td class="num">uniform</td><td class="num">shoulders/elbow 1.0, wrists 0.5</td></tr>
@@ -470,7 +440,7 @@
       </table>
     </div>
     <p class="small">
-      All 31 terms are registered in both; only the ones above differ. The residual penalty means
+      Every reward term is registered in both; only the ones above differ. The residual penalty means
       different things in the two: for ManTra it penalizes the correction on top of the controller,
       for E2E-RL it penalizes the arm action itself, which is why the override is 10&times; larger
       and the wrists are loosened.
