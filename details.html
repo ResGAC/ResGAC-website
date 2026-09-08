@@ -46,7 +46,6 @@
       <li><a href="#hparams">Optimizer, network, termination, simulation</a></li>
       <li><a href="#baseline">E2E-RL baseline &mdash; exactly what differs</a></li>
       <li><a href="#why">Why these values</a></li>
-      <li><a href="#gaps">Still undocumented</a></li>
     </ol>
   </div>
 
@@ -748,21 +747,6 @@
   </div>
 
   <!-- ==================== 8. GAPS ==================== -->
-  <div class="section" id="gaps">
-    <h2>8. Still undocumented</h2>
-    <ul class="bullets">
-      <li>Number of evaluation episodes and duration per trajectory behind Table&nbsp;III, and whether the hardware numbers come from one policy or are aggregated across seeds.</li>
-    </ul>
-    <p class="small">
-      The generation parameters for the precomputed trajectory datasets &mdash; sampling interval,
-      step interval, interpolation method, reference frame, workspace-bound weight, smoothing
-      ratio, and the stage-F mixing ratios &mdash; are documented in the code release, together
-      with the script that rebuilds the datasets. They are baked into the dataset files at
-      generation time and are not recoverable from the training configuration, which is why they
-      are recorded alongside the generator rather than left implicit.
-    </p>
-  </div>
-
   <div class="footer">
     <a href="index.html">&larr; Back to the project page</a><br>
     Anonymous project page for a double-blind submission. Last updated: 2026-09-08.
