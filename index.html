@@ -4,9 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
 
-  <!-- ANONYMITY: no author in <title>, no <meta name="author">, no og:*
-       tags naming a lab or person, no analytics snippet. -->
-  <title>Residual Admittance Loco-Manipulation</title>
+  <!-- ANONYMITY: no author in <title>, no <meta name="author">, no og:* tags
+       naming a lab or person, no analytics snippet. -->
+  <title>ManTra</title>
   <meta name="description" content="Anonymous project page for a double-blind submission." />
   <meta name="robots" content="noindex" />
 
@@ -15,63 +15,56 @@
 
 <body>
 
-<!-- =========================================================
-     Main column
-     ========================================================= -->
 <div class="container">
 
   <!-- ---------- Header ---------- -->
-  <h1 class="page-title">Residual Admittance<br>Loco-Manipulation</h1>
+  <h1 class="page-title">ManTra</h1>
   <p class="subtitle">
-    Whole-Body End-Effector Tracking on a Humanoid via Residual RL<br>over a Geometric Admittance Controller
+    Manipulator Tracking with High Precision<br>in Whole-body Humanoid Control
   </p>
 
   <div class="anon">
-    <b>Anonymous submission &mdash; paper under double-blind review.</b><br>
-    Author names, affiliations, and code links are withheld until the review period ends.
+    <b>Anonymous submission &mdash; under double-blind review.</b><br>
+    Author names, affiliations, and the code repository are withheld until the review period ends.
   </div>
-
-  <p class="venue">Under review, 2026</p>
 
   <div class="badges">
     <a class="badge" href="assets/pdfs/paper.pdf">Paper (PDF)</a>
-    <a class="badge" href="assets/pdfs/appendix.pdf">Appendix (PDF)</a>
     <a class="badge" href="details.html">Full training details</a>
     <span class="badge disabled">Code (released on acceptance)</span>
   </div>
 
   <p class="note">
-    All videos on this page are unedited apart from trimming and playback speed, which is
-    stated in each caption.
+    All videos are recorded on hardware. Playback speed is stated in each caption where it is not 1&times;.
   </p>
 
-  <!-- ---------- TL;DR ---------- -->
-  <div class="panel tldr">
-    <h2>TL;DR</h2>
-    <p>
-      A humanoid tracks <b>SE(3) end-effector targets with both arms while walking</b>.
-      A geometric admittance controller supplies the nominal arm command; a reinforcement
-      learning policy adds a bounded residual to the arms and commands the legs directly.
-      A five-phase curriculum, a sagittal-plane symmetry prior, and touchdown-aware reward
-      shaping give accurate tracking that stays accurate <em>through footstrike</em>.
-    </p>
-  </div>
-
-  <!-- ---------- Teaser video: the point of the page ---------- -->
+  <!-- ---------- Teaser ---------- -->
   <div class="section">
     <h2>Overview</h2>
     <div class="video">
-      <!-- Use `muted` + `autoplay` + `loop` only for a short silent teaser.
-           Anything longer should stay click-to-play. `preload="metadata"`
-           keeps the page fast when several videos share a section. -->
       <video controls playsinline preload="metadata" poster="assets/imgs/teaser_poster.jpg">
         <source src="assets/videos/teaser.mp4" type="video/mp4" />
         Your browser does not support the video tag.
       </video>
     </div>
     <p class="small" style="margin-top:10px;">
-      REPLACE: one or two sentences saying exactly what the viewer is looking at, in order,
-      with timestamps if the clip has segments.
+      ManTra on a Unitree G1: full-\(SE(3)\) dual-arm end-effector tracking during locomotion,
+      locomotion-disturbance rejection, and world-frame end-effector holding.
+    </p>
+  </div>
+
+  <!-- ---------- TL;DR ---------- -->
+  <div class="panel tldr">
+    <h2>TL;DR</h2>
+    <p>
+      A humanoid tracks <b>full-\(SE(3)\) dual-arm end-effector poses while walking</b>.
+      A floating-base <b>geometric admittance controller</b> produces nominal arm joint targets from
+      task-space pose feedback; <b>residual RL</b> adds a bounded correction in the same
+      joint-position action space and controls the remaining joints for locomotion and balance.
+      A <b>ground-attached heading frame</b> removes the kinematic transmission of pelvis roll,
+      pitch, and heave to the end-effector while preserving planar motion.
+      On hardware, ManTra reaches <b>6.5&nbsp;mm / 1.37&deg;</b> tracking error and beats every
+      baseline we tested, including SONIC.
     </p>
   </div>
 
@@ -79,9 +72,21 @@
   <div class="panel abstract">
     <h2>Abstract</h2>
     <p>
-      REPLACE with the paper abstract, copied verbatim. Check it for anonymity leaks before
-      pasting: named hardware testbeds, internal project codenames, and funding statements
-      routinely identify a lab.
+      Precise end-effector tracking during humanoid whole-body motion is challenging due to
+      floating-base oscillations, gravity, dynamic coupling, and locomotion-induced disturbances.
+      We propose <b>ManTra</b>, a whole-body humanoid controller for precise end-effector pose
+      tracking that combines geometric admittance control (GAC) with residual reinforcement
+      learning. GAC provides structured full-pose task-space feedback and generates nominal arm
+      joint-position targets, while residual RL compensates for unmodeled dynamics and coordinates
+      locomotion and balance in the same joint-position action space. The left-invariant geometric
+      formulation allows the same GAC law to be utilized across manipulation reference frames.
+      Based on this formulation, we introduce a ground-attached heading frame that removes the
+      kinematic transmission of pelvis roll, pitch, and heave while preserving planar locomotion.
+      ManTra is validated on a real Unitree G1 humanoid. Across four end-effector tracking
+      benchmarks, ManTra consistently outperforms representative baselines, including SONIC, in
+      translational and rotational errors. Real-world experiments further demonstrate reduced
+      transmission of locomotion-induced pelvis disturbances through the proposed ground-attached
+      heading frame and accurate full \(SE(3)\) pose world-frame tracking during body motion.
     </p>
   </div>
 
@@ -90,238 +95,361 @@
     <h2>Method</h2>
 
     <div class="figure">
-      <img src="assets/imgs/pipeline.png" alt="Method overview: admittance controller plus residual policy" />
+      <img src="assets/imgs/fig1_overview.png" alt="ManTra overview: GAC plus residual policy, reference frames, and task trajectories" />
     </div>
-    <p class="small" style="margin-top:10px;">Figure 1: System overview.</p>
+    <p class="small" style="margin-top:10px;">
+      Figure 1: (a) ManTra in the residual RL structure, with GAC as the baseline end-effector
+      controller. (b) The pelvis \(\{P\}\), heading \(\{H\}\), and ground-attached heading
+      \(\{H_0\}\) frames. (c) The evaluation trajectories.
+    </p>
 
     <p>
-      At each control step the controller forms a geometric SE(3) wrench from the
-      end-effector pose error measured in a ground-heading reference frame, integrates a
-      task-space admittance law, and maps the resulting twist to joint velocities through a
-      damped-least-squares relative Jacobian with a null-space rest-posture projector. The
-      policy adds a bounded residual to that arm command and outputs leg targets directly.
+      GAC is formulated on the <b>floating base</b>. Per control step it builds the geometric
+      elastic wrench \(f_G\) from the \(SE(3)\) pose error, integrates a task-space admittance law,
+      and maps the desired body-frame velocity to joint space through a damped pseudo-inverse with
+      null-space regulation, yielding a nominal joint target \(a_{\text{GAC}}\). The policy adds a
+      clipped residual on the arms and commands every other joint directly, so both act in the
+      <b>same joint-position action space</b> and a zero residual recovers the nominal controller.
     </p>
 
     <ul class="bullets">
-      <li><b>Nominal arm controller.</b> Over-damped task-space admittance, giving contact-safe arm motion without learning it from scratch.</li>
-      <li><b>Residual policy.</b> Bounded corrections on the arms, full authority on the legs, so locomotion and manipulation are learned jointly rather than layered.</li>
-      <li><b>Ground-heading reference frame.</b> Targets are expressed in a yaw-only frame on the ground, decoupling the manipulation task from pelvis pitch, roll, and height.</li>
-      <li><b>Symmetry prior.</b> Sagittal-plane reflection enforced as replay-batch augmentation <em>and</em> as an explicit actor-equivariance / critic-invariance loss.</li>
+      <li><b>Floating-base GAC.</b> The relative Jacobian \(J^{E}_{RE}\) is constructed in the world-aligned Cartesian frame and transformed into the end-effector body frame, so the controller sees end-effector motion <em>relative to the manipulation frame</em> rather than to the world.</li>
+      <li><b>Bounded residual in joint space.</b> \(a_{\text{arm}} = a_{\text{GAC}} + s_r\,\mathrm{clip}(a_{\text{RL,arm}}, -c_r, c_r)\), with \(s_r = 0.75\), \(c_r = 1.0\). The nominal action is also fed to the actor, so the residual is conditioned on what it is correcting.</li>
+      <li><b>Ground-attached heading frame \(\{H_0\}\).</b> Yaw-only rotation with the origin projected to \(z=0\), removing roll, pitch, and vertical heave from the command while retaining the planar \((x,y,\psi)\) motion locomotion needs.</li>
+      <li><b>Symmetry.</b> Sagittal-plane reflection \(\mathcal{M} = \mathrm{diag}(1,-1,1)\) applied as replay augmentation <em>and</em> as explicit actor-equivariance and critic-invariance losses.</li>
+      <li><b>No retargeted human motion data.</b> Arm configurations are sampled, mapped through forward kinematics, and interpolated in \(SE(3)\) with randomized speeds.</li>
     </ul>
 
     <!-- ===================================================================
-         THE HACK, part 1: inline disclosure panels.
-
-         Everything that would be cut from a page-limited paper lives here,
-         collapsed. The page still reads as a video page; the reviewer who
-         wants the exact reward weight is one click from it, and the full
-         dump is on details.html.
+         Disclosure panels: the appendix material, collapsed so the page
+         stays video-first. Full derivations on details.html.
          =================================================================== -->
 
     <details class="detail">
-      <summary>Reward terms and weights <span class="tag">— all 20 terms, exact weights</span></summary>
+      <summary>Reward terms and final-stage weights <span class="tag">&mdash; Table I, all 24 terms</span></summary>
       <div class="detail-body">
         <p class="small">
-          Tracking terms use an exponential kernel <code>r = exp(-e / &sigma;)</code>;
-          penalties are quadratic or gated. Weights below are the final values.
+          Total reward \(r_t = \sum_i w_i r_{i,t}\). &ldquo;Exp.&rdquo; denotes an exponential kernel.
+          Values are the final training stage; curriculum-dependent changes are in the
+          <a href="details.html#curriculum">curriculum table</a>.
         </p>
         <div class="tablewrap">
           <table>
-            <thead>
-              <tr><th>Term</th><th>Weight</th><th>Kernel / definition</th></tr>
-            </thead>
+            <thead><tr><th>Group</th><th>Term</th><th>Form</th><th>&sigma; / Param.</th><th>\(w_i\)</th></tr></thead>
             <tbody>
-              <tr><td><code>tracking_ee_pos</code></td><td class="num">4.0</td><td>exp(&minus;&Vert;e<sub>pos</sub>&Vert;&sup2; / &sigma;<sub>eff</sub>), &sigma;<sub>eff</sub> touchdown-gated</td></tr>
-              <tr><td><code>tracking_ee_rot</code></td><td class="num">2.5</td><td>exp(&minus;e<sub>rot</sub> / &sigma;), e<sub>rot</sub> = &frac12;&Sigma;<sub>i</sub>(3 &minus; tr(R<sub>i</sub><sup>T</sup>R<sub>i</sub><sup>*</sup>))</td></tr>
-              <tr><td><code>tracking_lin_vel</code></td><td class="num">2.0</td><td>exp(&minus;&Vert;v<sub>xy</sub> &minus; v<sub>xy</sub><sup>cmd</sup>&Vert;&sup2; / &sigma;)</td></tr>
-              <tr><td><code>tracking_ang_vel</code></td><td class="num">1.5</td><td>exp(&minus;(&omega;<sub>z</sub> &minus; &omega;<sub>z</sub><sup>cmd</sup>)&sup2; / &sigma;)</td></tr>
-              <tr><td><code>feet_phase</code></td><td class="num">5.0</td><td>Bezier swing-height tracking, swing height 0.09&nbsp;m</td></tr>
-              <tr><td><code>tracking_orientation</code></td><td class="num">1.0</td><td>pelvis uprightness, exp(&minus;&Vert;g<sub>xy</sub>&Vert;&sup2; / &sigma;)</td></tr>
-              <tr><td><code>tracking_torso_orientation</code></td><td class="num">1.0</td><td>torso-link uprightness, same kernel</td></tr>
-              <tr><td><code>tracking_base_height</code></td><td class="num">1.0</td><td>target 0.73&nbsp;m</td></tr>
-              <tr><td><code>alive</code></td><td class="num">10.0</td><td>constant per-step survival bonus</td></tr>
-              <tr><td><code>penalty_termination</code></td><td class="num">&minus;200.0</td><td>one-shot on failure reset (not timeout)</td></tr>
-              <tr><td><code>penalty_close_feet_xy</code></td><td class="num">&minus;10.0</td><td>indicator, lateral foot separation &lt; 0.15&nbsp;m</td></tr>
-              <tr><td><code>penalty_feet_ori</code></td><td class="num">&minus;5.0</td><td>&Sigma;<sub>i</sub>&Vert;g<sup>foot</sup><sub>i,xy</sub>&Vert;</td></tr>
-              <tr><td><code>penalty_leg_action_rate</code></td><td class="num">&minus;1.0</td><td>&Vert;a<sub>leg</sub>(t) &minus; a<sub>leg</sub>(t&minus;1)&Vert;&sup2;</td></tr>
-              <tr><td><code>penalty_arm_action_rate</code></td><td class="num">&minus;0.5</td><td>same, over arm channels</td></tr>
-              <tr><td><code>penalty_dof_pos_limits</code></td><td class="num">&minus;1.0</td><td>soft hinge at 95% of joint range</td></tr>
-              <tr><td><code>penalty_pose_deviation</code></td><td class="num">&minus;0.5 / &minus;1.0</td><td>&Sigma;<sub>j</sub> w<sub>j</sub>(q<sub>j</sub> &minus; q<sub>j</sub><sup>def</sup>)&sup2;, arms excluded</td></tr>
-              <tr><td><code>penalty_arm_residual_l2</code></td><td class="num">&minus;0.1 &rarr; &minus;0.05</td><td>&Vert;r<sub>arm</sub>&Vert;&sup2;, keeps the policy near the nominal command</td></tr>
-              <tr><td><code>penalty_arm_dof_vel</code></td><td class="num">&minus;0.0125 &rarr; &minus;0.05</td><td>&Sigma; q&#775;<sub>arm</sub>&sup2;, ramped in late phases</td></tr>
-              <tr><td><code>penalty_ee_body_twist</code></td><td class="num">&minus;0.05</td><td>EE 6D body-frame twist, damps the hold</td></tr>
-              <tr><td><code>penalty_foot_contact_force</code></td><td class="num">&minus;2.0</td><td>(max(0, F<sub>z</sub><sup>peak</sup> &minus; 400&nbsp;N) / 400)&sup2;</td></tr>
-              <tr><td><code>penalty_foot_pretouchdown_velocity</code></td><td class="num">&minus;2.0</td><td>max(0, &minus;z&#775; &minus; 0.15)&sup2; while airborne and &lt; 0.05&nbsp;m up</td></tr>
-              <tr><td><code>penalty_straight_walk_yaw_leakage_gait_avg</code></td><td class="num">&minus;10.0</td><td>gait-averaged yaw drift on straight commands</td></tr>
-              <tr><td><code>penalty_lateral_velocity_gait_avg</code></td><td class="num">&minus;2.0</td><td>gait-averaged cross-track drift</td></tr>
-              <tr><td><code>penalty_standing_ang_vel</code></td><td class="num">&minus;2.5</td><td>masked to zero-command standing</td></tr>
-              <tr><td><code>penalty_turn_in_place_leakage</code></td><td class="num">&minus;2.5</td><td>masked to pure-yaw commands</td></tr>
+              <tr><td rowspan="2">Manip.</td><td>EEF position</td><td>Exp. \(L_2^2 + L_1\)</td><td class="num">0.001 / 0.01</td><td class="num">4.0</td></tr>
+              <tr><td>EEF orientation</td><td>Exp. \(SO(3)\)</td><td class="num">0.02</td><td class="num">3.0</td></tr>
+
+              <tr><td rowspan="6">Loco.</td><td>Linear velocity</td><td>Exp. \(L_2^2\)</td><td class="num">0.25</td><td class="num">2.0</td></tr>
+              <tr><td>Angular velocity</td><td>Exp. \(L_2^2\)</td><td class="num">0.25</td><td class="num">1.5</td></tr>
+              <tr><td>Swing-foot trajectory</td><td>Exp. \(L_2^2\)</td><td class="num">0.008</td><td class="num">5.0</td></tr>
+              <tr><td>Pelvis orientation</td><td>Exp. \(L_2^2\)</td><td class="num">0.04</td><td class="num">1.0</td></tr>
+              <tr><td>Torso orientation</td><td>Exp. \(L_2^2\)</td><td class="num">0.04</td><td class="num">1.0</td></tr>
+              <tr><td>Base height</td><td>Exp. \(L_2^2\)</td><td class="num">3.0</td><td class="num">1.0</td></tr>
+
+              <tr><td rowspan="16">Reg.</td><td>Arm residual</td><td>\(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;0.05</td></tr>
+              <tr><td>EEF body twist</td><td>\(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;0.05</td></tr>
+              <tr><td>Arm action rate</td><td>\(\lVert \Delta a\rVert^2\)</td><td class="num">&mdash;</td><td class="num">&minus;0.5</td></tr>
+              <tr><td>Non-arm action rate</td><td>\(\lVert \Delta a\rVert^2\)</td><td class="num">&mdash;</td><td class="num">&minus;1.0</td></tr>
+              <tr><td>Mean-action accel.</td><td>\(\lVert \Delta^2 \mu\rVert^2\)</td><td class="num">&mdash;</td><td class="num">&minus;0.10</td></tr>
+              <tr><td>Arm joint velocity</td><td>\(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;0.05</td></tr>
+              <tr><td>Pose deviation</td><td>Weighted \(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;1.0</td></tr>
+              <tr><td>Joint-position limit</td><td>Linear excess</td><td class="num">95%</td><td class="num">&minus;1.0</td></tr>
+              <tr><td>Foot proximity</td><td>\(L_2^2\)</td><td class="num">0.15 m</td><td class="num">&minus;5</td></tr>
+              <tr><td>Foot orientation</td><td>\(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;5</td></tr>
+              <tr><td>Turn-in-place leakage</td><td>Gated \(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;2.5</td></tr>
+              <tr><td>Heading leakage</td><td>Gait-avg. \(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;10</td></tr>
+              <tr><td>Lateral leakage</td><td>Gait-avg. \(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;2</td></tr>
+              <tr><td>Standing yaw rate</td><td>Gated \(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;2.5</td></tr>
+              <tr><td>Foot contact force</td><td>Threshold \(L_2^2\)</td><td class="num">400 N</td><td class="num">&minus;2</td></tr>
+              <tr><td>Pre-touchdown velocity</td><td>Gated \(L_2^2\)</td><td class="num">0.15 m/s</td><td class="num">&minus;2</td></tr>
+              <tr><td>&mdash;</td><td>Alive / termination</td><td>Indicator</td><td class="num">&mdash;</td><td class="num">10 / &minus;200</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">Kernel definitions and the gait-cycle averaging are on the <a href="details.html#rewards">training details page</a>.</p>
+      </div>
+    </details>
+
+    <details class="detail">
+      <summary>Training curriculum <span class="tag">&mdash; Table II, six stages, ~18 h on one L40S</span></summary>
+      <div class="detail-body">
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th></th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th><th>F</th></tr></thead>
+            <tbody>
+              <tr><td>Task</td><td>Stand<br>Fixed</td><td>Stand<br>Traj.</td><td>Walk<br>Fixed</td><td>Walk<br>Traj.</td><td>Walk<br>Traj.</td><td>Walk<br>Traj.</td></tr>
+              <tr><td>Iterations</td><td class="num">&le; 10k</td><td class="num">&le; 10k</td><td class="num">&le; 20k</td><td class="num">50k</td><td class="num">60k</td><td class="num">60k</td></tr>
+              <tr><td>Cmd. range \((v_x,v_y,\omega_z)\)</td><td class="num">0</td><td class="num">0</td><td class="num">.3/.3/.5</td><td class="num">.7/.7/.7</td><td class="num">.7/.7/.7</td><td class="num">.7/.7/.7</td></tr>
+              <tr><td>\(\sigma_P\)</td><td class="num">.02</td><td class="num">.01</td><td class="num">.02</td><td class="num">.005&rarr;.001</td><td class="num">.001/.01</td><td class="num">.001/.01</td></tr>
+              <tr><td>\(\sigma_R\)</td><td class="num">.20</td><td class="num">.10</td><td class="num">.10</td><td class="num">.10&rarr;.02</td><td class="num">.02</td><td class="num">.02</td></tr>
+              <tr><td>\(\sigma_v\)</td><td class="num">.25</td><td class="num">.25</td><td class="num">.25</td><td class="num">.25&rarr;.10</td><td class="num">.10</td><td class="num">.10</td></tr>
+              <tr><td>Init. \(q\) scale</td><td class="num">[.9, 1.1]</td><td class="num">[.85, 1.15]</td><td class="num">[.85, 1.15]</td><td class="num">[.7, 1.3]</td><td class="num">[.7, 1.3]</td><td class="num">[.7, 1.3]</td></tr>
+              <tr><td>\(w_{\text{rot}}\)</td><td class="num">2.5</td><td class="num">2.5</td><td class="num">2.5</td><td class="num">3.0</td><td class="num">3.0</td><td class="num">3.0</td></tr>
+              <tr><td>\(w_{\text{res}}\)</td><td class="num">&minus;.10</td><td class="num">&minus;.10</td><td class="num">&minus;.10</td><td class="num">&minus;.10&rarr;&minus;.05</td><td class="num">&minus;.05</td><td class="num">&minus;.05</td></tr>
+              <tr><td>\(w_{\text{pose}}\)</td><td class="num">&minus;.5</td><td class="num">&minus;.5</td><td class="num">&minus;.5</td><td class="num">&minus;1.0</td><td class="num">&minus;1.0</td><td class="num">&minus;1.0</td></tr>
+              <tr><td>\(w_{\dot q,\text{arm}}\)</td><td class="num">&minus;.0125</td><td class="num">&minus;.0125</td><td class="num">&minus;.0125</td><td class="num">&minus;.02</td><td class="num">&minus;.05</td><td class="num">&minus;.05</td></tr>
+              <tr><td>\(w_{\text{twist}}\)</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">&minus;.02</td><td class="num">&minus;.05</td><td class="num">&minus;.05</td></tr>
             </tbody>
           </table>
         </div>
         <p class="small">
-          Full kernels, masks, and the touchdown gate are derived on the
-          <a href="details.html#rewards">training details page</a>.
+          Stages A&ndash;C stop early once stable, hence the \(\le\) on their budgets. \(\sigma_P\)
+          for stages E and F lists \((\sigma_2, \sigma_1)\) of the combined \(L_2^2 + L_1\) kernel.
+          Policy and optimizer checkpoints transfer sequentially between stages.
         </p>
       </div>
     </details>
 
     <details class="detail">
-      <summary>Training curriculum <span class="tag">— 6 phases, ~210k iterations</span></summary>
+      <summary>Controller gains and training setup <span class="tag">&mdash; every number needed to rerun this</span></summary>
       <div class="detail-body">
         <div class="tablewrap">
           <table>
-            <thead>
-              <tr><th>Phase</th><th>Task</th><th>Iters</th><th>Stand prob.</th><th>Command range (x/y, yaw)</th></tr>
-            </thead>
+            <thead><tr><th>Quantity</th><th>Value</th></tr></thead>
             <tbody>
-              <tr><td>A</td><td>Standing, fixed EE targets</td><td class="num">10k*</td><td class="num">1.0</td><td>&mdash;</td></tr>
-              <tr><td>B</td><td>Standing, arm trajectory</td><td class="num">10k*</td><td class="num">1.0</td><td>&mdash;</td></tr>
-              <tr><td>C</td><td>Slow walking, fixed arms</td><td class="num">20k*</td><td class="num">0.3</td><td>&plusmn;0.3 / &plusmn;0.5</td></tr>
-              <tr><td>DE</td><td>Walking + arm tracking, &sigma; annealing</td><td class="num">50k</td><td class="num">0.2</td><td>&plusmn;0.7 / &plusmn;0.7</td></tr>
-              <tr><td>F</td><td>Fine-tune, combined L2&sup2;+L1 kernel</td><td class="num">60k</td><td class="num">0.2</td><td>&plusmn;0.7 / &plusmn;0.7</td></tr>
-              <tr><td>Teleop</td><td>Task-space mixed targets</td><td class="num">60k</td><td class="num">0.2</td><td>&plusmn;0.7 / &plusmn;0.7</td></tr>
+              <tr><td>Admittance mass \(M\)</td><td class="num">\(\mathrm{diag}(1.5 I_3,\; 2.25 I_3)\)</td></tr>
+              <tr><td>Stiffness \(K_p = K_R\)</td><td class="num">\(5000 I_3\)</td></tr>
+              <tr><td>Damping \(K_d\)</td><td class="num">set so damping ratio = 2</td></tr>
+              <tr><td>Damped pseudo-inverse \(\lambda_{\text{null}}\)</td><td class="num">0.0025</td></tr>
+              <tr><td>Null-space gain \(k_{\text{null}}\)</td><td class="num">50</td></tr>
+              <tr><td>Residual scale / clip \(s_r,\, c_r\)</td><td class="num">0.75, 1.0</td></tr>
+              <tr><td>Control rate (GAC and policy)</td><td class="num">50 Hz</td></tr>
+              <tr><td>Parallel environments</td><td class="num">4096</td></tr>
+              <tr><td>Hardware / wall-clock</td><td class="num">1&times; NVIDIA L40S, ~18 h</td></tr>
+              <tr><td>Algorithm</td><td class="num">FastSAC, asymmetric actor-critic</td></tr>
+              <tr><td>Deployment kinematics</td><td class="num">pinocchio</td></tr>
             </tbody>
           </table>
         </div>
         <p class="small">
-          * Phases A&ndash;C stop early once mean episode length exceeds 990 steps and holds.
-          Per-phase &sigma; schedules, randomization ramps, and early-stop patience values are on the
-          <a href="details.html#curriculum">training details page</a>.
+          PD gains follow BeyondMimic. The critic additionally receives pelvis linear velocity,
+          which is never provided to the actor during training or deployment.
         </p>
-      </div>
-    </details>
-
-    <details class="detail">
-      <summary>Exact training command <span class="tag">— copy-pasteable, anonymized</span></summary>
-      <div class="detail-body">
-        <p class="small">
-          Module paths are redacted during review; the flag names and every numeric value are
-          the ones actually used.
-        </p>
-<pre><code>python -m &lt;pipeline&gt; \
-    exp:&lt;experiment&gt; simulator:isaacsim \
-    --training.seed 87 \
-    --late-arm-dof-vel-weight -0.05 \
-    --late-ee-twist-weight -0.05 \
-    --reward.terms.penalty_foot_contact_force.weight -2.0 \
-    --pretouchdown-vel-weight -2.0 \
-    --action.terms.loco_arm_residual.params.controller_kwargs.damping_ratio 2.0 \
-    --gait-avg-yaw-leakage -10.0 --gait-avg-lateral -2.0 \
-    --randomization.setup_terms.setup_torque_rfi.params.enabled True \
-    --randomization.setup_terms.setup_torque_rfi.params.rfi_lim 0.10 \
-    --observation.groups.actor_obs.terms.dof_vel.noise 0.05 \
-    --ang-vel-sigma-end 0.25 \
-    --reward.terms.tracking_ee_pos.params.touchdown_gate_sigma_scale 0.25 \
-    --phase-de-iterations 50000 --phase-f-iterations 60000 \
-    --phase-teleop --phase-teleop-iterations 60000 \
-    --algo.config.use_symmetry_loss True \
-    --algo.config.symmetry_actor_coef 5.0 \
-    --algo.config.symmetry_critic_coef 0.5</code></pre>
-        <p class="small">Seeds used across the reported runs: 55, 87, 199.</p>
       </div>
     </details>
   </div>
 
-  <!-- ---------- Results ---------- -->
+  <!-- ---------- Results: the four benchmark trajectories ---------- -->
   <div class="section">
-    <h2>Results</h2>
+    <h2>Tracking Benchmarks</h2>
+    <p>
+      Four held-out reference trajectories, all evaluated while the humanoid maintains a standing
+      posture so that tracking precision is isolated from locomotion-induced disturbance. None of
+      these trajectories appears in the training curriculum.
+    </p>
 
-    <h3>REPLACE: result group heading</h3>
     <div class="grid two-col">
       <div class="vidcell">
-        <h3>Condition A</h3>
-        <div class="video">
-          <video controls playsinline preload="metadata"><source src="assets/videos/result_a.mp4" type="video/mp4" /></video>
-        </div>
-        <p class="small" style="margin-top:10px;">REPLACE: caption.</p>
+        <h3>Smooth arm-sweep</h3>
+        <div class="video"><video controls playsinline preload="metadata"><source src="assets/videos/smooth_sweep.mp4" type="video/mp4" /></video></div>
+        <p class="small" style="margin-top:10px;">A fast, smooth trajectory spanning a broad arm workspace.</p>
       </div>
       <div class="vidcell">
-        <h3>Condition B</h3>
-        <div class="video">
-          <video controls playsinline preload="metadata"><source src="assets/videos/result_b.mp4" type="video/mp4" /></video>
-        </div>
-        <p class="small" style="margin-top:10px;">REPLACE: caption.</p>
+        <h3>Nonsmooth arm-sweep</h3>
+        <div class="video"><video controls playsinline preload="metadata"><source src="assets/videos/nonsmooth_sweep.mp4" type="video/mp4" /></video></div>
+        <p class="small" style="margin-top:10px;">Discrete full-arm-range setpoints, producing step-change behavior. Tests transient response.</p>
       </div>
-      <p class="span-2 small" style="margin-top:6px;">REPLACE: shared caption for the pair.</p>
+      <div class="vidcell">
+        <h3>Infinity</h3>
+        <div class="video"><video controls playsinline preload="metadata"><source src="assets/videos/infinity.mp4" type="video/mp4" /></video></div>
+        <p class="small" style="margin-top:10px;">An infinity-shaped trajectory with simultaneous position and moderate orientation variation.</p>
+      </div>
+      <div class="vidcell">
+        <h3>Pick-and-place</h3>
+        <div class="video"><video controls playsinline preload="metadata"><source src="assets/videos/pick_and_place.mp4" type="video/mp4" /></video></div>
+        <p class="small" style="margin-top:10px;">A slower task-space trajectory sampled from a teleoperated pick-and-place demonstration.</p>
+      </div>
+    </div>
+
+    <h3 style="margin-top:26px;">Quantitative results</h3>
+    <p class="small">
+      Mean &plusmn; standard deviation over temporal samples and both arms. For the nonsmooth
+      trajectory, only steady-state samples after each command transition are included. Lower is
+      better; <b>best</b> in bold, <u>second-best</u> underlined. All controllers are evaluated in
+      the pelvis frame \(\{P\}\) except SONIC-Teleop-v1.1, whose released policy uses a
+      heading-frame representation and is therefore reported in \(\{H\}\).
+    </p>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th rowspan="2">Controller</th>
+            <th colspan="2">Smooth</th><th colspan="2">Nonsmooth</th>
+            <th colspan="2">Infinity</th><th colspan="2">Pick-and-Place</th>
+          </tr>
+          <tr>
+            <th>Pos. [mm]</th><th>Rot. [&deg;]</th><th>Pos. [mm]</th><th>Rot. [&deg;]</th>
+            <th>Pos. [mm]</th><th>Rot. [&deg;]</th><th>Pos. [mm]</th><th>Rot. [&deg;]</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>E2E-RL</td>
+            <td class="num">43.6 &plusmn; 31.1</td><td class="num"><u>9.36 &plusmn; 7.47</u></td>
+            <td class="num">33.9 &plusmn; 20.9</td><td class="num">4.87 &plusmn; 3.24</td>
+            <td class="num">33.6 &plusmn; 14.9</td><td class="num">8.36 &plusmn; 4.42</td>
+            <td class="num">35.5 &plusmn; 31.6</td><td class="num"><u>6.02 &plusmn; 1.56</u></td></tr>
+          <tr><td>SONIC-IK-WBT</td>
+            <td class="num">41.7 &plusmn; 27.6</td><td class="num">18.86 &plusmn; 13.37</td>
+            <td class="num">25.1 &plusmn; 17.6</td><td class="num">15.42 &plusmn; 11.01</td>
+            <td class="num">32.3 &plusmn; 32.4</td><td class="num">14.06 &plusmn; 13.01</td>
+            <td class="num">21.9 &plusmn; 5.9</td><td class="num">15.31 &plusmn; 5.94</td></tr>
+          <tr><td>SONIC-Teleop</td>
+            <td class="num">39.6 &plusmn; 40.3</td><td class="num">23.23 &plusmn; 20.52</td>
+            <td class="num">25.3 &plusmn; 19.6</td><td class="num">18.32 &plusmn; 11.56</td>
+            <td class="num">18.4 &plusmn; 9.0</td><td class="num">11.00 &plusmn; 5.40</td>
+            <td class="num">23.9 &plusmn; 13.9</td><td class="num">24.63 &plusmn; 9.09</td></tr>
+          <tr><td>SONIC-Teleop-v1.1</td>
+            <td class="num"><u>34.3 &plusmn; 29.0</u></td><td class="num">17.60 &plusmn; 26.86</td>
+            <td class="num"><u>19.7 &plusmn; 9.6</u></td><td class="num"><u>8.65 &plusmn; 8.63</u></td>
+            <td class="num"><u>15.3 &plusmn; 6.4</u></td><td class="num"><u>6.44 &plusmn; 2.77</u></td>
+            <td class="num"><u>14.5 &plusmn; 3.9</u></td><td class="num">6.23 &plusmn; 3.17</td></tr>
+          <tr><td>GAC+Split-RL</td>
+            <td class="num">98.5 &plusmn; 32.5</td><td class="num">14.80 &plusmn; 6.16</td>
+            <td class="num">94.5 &plusmn; 24.9</td><td class="num">13.31 &plusmn; 3.78</td>
+            <td class="num">50.6 &plusmn; 12.6</td><td class="num">9.47 &plusmn; 1.87</td>
+            <td class="num">74.1 &plusmn; 37.5</td><td class="num">12.25 &plusmn; 3.68</td></tr>
+          <tr><td><b>ManTra (ours)</b></td>
+            <td class="num"><b>22.4 &plusmn; 25.0</b></td><td class="num"><b>5.29 &plusmn; 7.00</b></td>
+            <td class="num"><b>6.5 &plusmn; 3.7</b></td><td class="num"><b>1.37 &plusmn; 0.76</b></td>
+            <td class="num"><b>14.1 &plusmn; 7.1</b></td><td class="num"><b>3.63 &plusmn; 2.15</b></td>
+            <td class="num"><b>6.6 &plusmn; 2.7</b></td><td class="num"><b>1.67 &plusmn; 0.75</b></td></tr>
+        </tbody>
+      </table>
     </div>
 
     <details class="detail">
-      <summary>Quantitative results <span class="tag">— mean &plusmn; std over 3 seeds</span></summary>
+      <summary>What the two architectural ablations show</summary>
       <div class="detail-body">
-        <div class="tablewrap">
-          <table>
-            <thead>
-              <tr><th>Method</th><th>EE pos. err. (cm)</th><th>EE rot. err. (deg)</th><th>Vel. track. err. (m/s)</th><th>Success (%)</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>Ours</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td></tr>
-              <tr><td>End-to-end RL baseline</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td></tr>
-              <tr><td>Ours, pelvis frame</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td></tr>
-              <tr><td>Ours, no symmetry loss</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <p class="small">REPLACE with the numbers from the paper, and say which evaluation episodes they come from.</p>
+        <p>
+          <b>E2E-RL</b> uses the same recipe as ManTra with the nominal GAC controller removed. It
+          shows consistently larger tracking errors, which is the case for explicit task-space
+          feedback.
+        </p>
+        <p>
+          <b>GAC+Split-RL</b> removes the arm residual instead: the arms are controlled by GAC
+          alone while RL handles the remaining joints. It performs substantially worse than ManTra
+          &mdash; and worse than E2E-RL on position &mdash; indicating that geometric feedback
+          alone does not compensate for gravity and whole-body dynamic coupling. Both halves of the
+          architecture are load-bearing.
+        </p>
       </div>
     </details>
   </div>
 
 </div><!-- /.container -->
 
-<!-- =========================================================
-     Wide band: comparisons read far better three-up
-     ========================================================= -->
+<!-- ---------- Wide band: baseline comparison ---------- -->
 <div class="wide-section">
-  <h2 style="font-family:var(--serif); font-size:30px; margin:26px 0 14px;">Baseline Comparisons</h2>
+  <h2 style="font-family:var(--serif); font-size:30px; margin:34px 0 6px;">Baseline Comparison</h2>
+  <p class="small" style="margin:0 0 14px;">Same reference trajectory, same robot, three controllers.</p>
   <div class="grid grid-3wide">
     <div class="vidcell">
-      <h3>End-to-end RL</h3>
+      <h3>E2E-RL</h3>
       <div class="video"><video controls playsinline preload="metadata"><source src="assets/videos/cmp_e2e.mp4" type="video/mp4" /></video></div>
-      <p class="small" style="margin-top:10px;">REPLACE: what fails, and why.</p>
+      <p class="small" style="margin-top:10px;">No nominal controller: larger steady-state error and slower convergence after each command transition.</p>
     </div>
     <div class="vidcell">
-      <h3>Controller only, no residual</h3>
-      <div class="video"><video controls playsinline preload="metadata"><source src="assets/videos/cmp_nores.mp4" type="video/mp4" /></video></div>
-      <p class="small" style="margin-top:10px;">REPLACE: what fails, and why.</p>
+      <h3>SONIC-Teleop-v1.1</h3>
+      <div class="video"><video controls playsinline preload="metadata"><source src="assets/videos/cmp_sonic.mp4" type="video/mp4" /></video></div>
+      <p class="small" style="margin-top:10px;">The strongest baseline, and the only one using a heading-frame representation.</p>
     </div>
     <div class="vidcell">
-      <h3>Ours</h3>
-      <div class="video"><video controls playsinline preload="metadata"><source src="assets/videos/cmp_ours.mp4" type="video/mp4" /></video></div>
-      <p class="small" style="margin-top:10px;">REPLACE: what succeeds, and why.</p>
+      <h3>ManTra (ours)</h3>
+      <div class="video"><video controls playsinline preload="metadata"><source src="assets/videos/cmp_mantra.mp4" type="video/mp4" /></video></div>
+      <p class="small" style="margin-top:10px;">Faster convergence with lower steady-state position and orientation error.</p>
     </div>
   </div>
 </div>
 
-<!-- =========================================================
-     Back to the main column
-     ========================================================= -->
 <div class="container">
+
+  <!-- ---------- Disturbance rejection ---------- -->
+  <div class="section">
+    <h2>Disturbance Rejection via Frame Selection</h2>
+    <p>
+      A static arm-holding task during forward and backward walking, comparing two ManTra policies
+      that differ only in their manipulation reference frame. The <b>transmission ratio</b>
+      \(\rho_x = \sigma_{\text{EEF},x} / \sigma_{P,x}\) normalizes end-effector variation by the
+      pelvis variation that caused it; lower means stronger rejection.
+    </p>
+
+    <div class="grid two-col">
+      <div class="vidcell">
+        <h3>Pelvis frame \(\{P\}\)</h3>
+        <div class="video"><video controls playsinline preload="metadata"><source src="assets/videos/frame_pelvis.mp4" type="video/mp4" /></video></div>
+        <p class="small" style="margin-top:10px;">Pelvis roll, pitch, and heave are transmitted to the commanded end-effector pose.</p>
+      </div>
+      <div class="vidcell">
+        <h3>Ground-attached heading frame \(\{H_0\}\)</h3>
+        <div class="video"><video controls playsinline preload="metadata"><source src="assets/videos/frame_h0.mp4" type="video/mp4" /></video></div>
+        <p class="small" style="margin-top:10px;">The same policy recipe with \(\{H_0\}\): visibly steadier hands for the same gait.</p>
+      </div>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Metric</th><th>Ground-heading \(\{H_0\}\)</th><th>Pelvis \(\{P\}\)</th></tr></thead>
+        <tbody>
+          <tr><td>Pelvis roll std. [&deg;]</td><td class="num">1.218</td><td class="num">1.322</td></tr>
+          <tr><td>Pelvis pitch std. [&deg;]</td><td class="num">3.794</td><td class="num">4.107</td></tr>
+          <tr><td>Pelvis \(z\) std. [mm]</td><td class="num">6.280</td><td class="num">6.219</td></tr>
+          <tr><td>EEF roll std. [&deg;]</td><td class="num"><b>0.963</b></td><td class="num">1.266</td></tr>
+          <tr><td>EEF pitch std. [&deg;]</td><td class="num"><b>3.621</b></td><td class="num">3.962</td></tr>
+          <tr><td>EEF \(z\) std. [mm]</td><td class="num"><b>5.558</b></td><td class="num">6.632</td></tr>
+          <tr><td>Roll transmission ratio</td><td class="num"><b>0.790</b></td><td class="num">0.958</td></tr>
+          <tr><td>Pitch transmission ratio</td><td class="num"><b>0.954</b></td><td class="num">0.964</td></tr>
+          <tr><td>\(z\) transmission ratio</td><td class="num"><b>0.884</b></td><td class="num">1.068</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="small">
+      Pelvis disturbance levels are comparable between the two policies, so the difference is
+      attributable to the frame rather than to a gentler gait. The improvement in pitch is smaller,
+      indicating that pitch variation is less effectively rejected through frame selection alone.
+    </p>
+  </div>
+
+  <!-- ---------- Mime-man ---------- -->
+  <div class="section">
+    <h2>World-Frame Tracking: Mime-Man Demo</h2>
+    <div class="video">
+      <video controls playsinline preload="metadata"><source src="assets/videos/mime_man.mp4" type="video/mp4" /></video>
+    </div>
+    <p class="small" style="margin-top:10px;">
+      The end effectors are moved to designated world-frame poses and then commanded to remain
+      fixed in the world while the humanoid translates and rotates its body. Locomotion commands
+      come from OptiTrack-based pelvis localization.
+    </p>
+    <p>
+      ManTra holds the commanded world-frame pose to a mean position error of <b>8.8&nbsp;mm</b> and
+      a mean orientation error of <b>2.69&deg;</b>, against <b>76.5&nbsp;mm</b> and <b>13.65&deg;</b>
+      for E2E-RL &mdash; even with the world-frame reference compensator tuned for the baseline.
+    </p>
+  </div>
 
   <div class="section">
     <h2>Training Details</h2>
     <p>
-      Every hyperparameter needed to reproduce these runs &mdash; the full reward
-      specification, the six-phase curriculum with per-phase overrides, observation and
-      action spaces, domain randomization, and the symmetry construction &mdash; is on a
-      separate page rather than compressed into an appendix.
+      Reward kernels, the six-stage curriculum, the GAC derivation, frame construction, symmetry
+      losses, and the full implementation setup are on a separate page rather than compressed into
+      the paper's page budget.
     </p>
     <p><a class="badge" href="details.html">Open the full training details &rarr;</a></p>
-  </div>
-
-  <div class="section">
-    <h2>Failure Cases</h2>
-    <p>
-      REPLACE, and do include this section. Reviewers reliably read an honest failure
-      section as a credibility signal, and it costs nothing on a webpage.
-    </p>
   </div>
 
   <div class="footer">
     Anonymous project page for a double-blind submission. Last updated: 2026-09-08.
   </div>
 
-</div><!-- /.container -->
+</div>
+
+<!-- MathJax: the page uses inline math in a handful of captions and tables. -->
+<script>
+  window.MathJax = { tex: { inlineMath: [['\\(', '\\)']] },
+                     options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] } };
+</script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
 
 </body>
 </html>
