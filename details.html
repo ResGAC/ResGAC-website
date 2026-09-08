@@ -420,10 +420,57 @@
         </tbody>
       </table>
     </div>
-    <p class="small">
-      Replay capacity is 1024 transitions per environment, so ~4.2M at 4096 environments. Symmetry
-      augmentation doubles each sampled batch before the update, so the effective batch is 16384.
+    <h4 style="margin:22px 0 8px; font-size:17px;">Architecture</h4>
+    <p>
+      Both networks are plain MLPs with a tapering trunk &mdash; three hidden layers at
+      \(H\), \(H/2\), \(H/4\) &mdash; each layer being <b>Linear &rarr; LayerNorm &rarr; SiLU</b>.
+      There are no convolutions, no recurrence, and no observation history: the temporal
+      information the policy gets is the gait phase and the two previous actions.
     </p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th></th><th>Actor</th><th>Critic (per Q-network)</th></tr></thead>
+        <tbody>
+          <tr><td>Input</td><td class="num">198</td><td class="num">248 = 219 obs + 29 action</td></tr>
+          <tr><td>Hidden widths</td><td class="num">512 &rarr; 256 &rarr; 128</td><td class="num">768 &rarr; 384 &rarr; 192</td></tr>
+          <tr><td>Normalization</td><td class="num">LayerNorm on every hidden layer</td><td class="num">LayerNorm on every hidden layer</td></tr>
+          <tr><td>Activation</td><td class="num">SiLU</td><td class="num">SiLU</td></tr>
+          <tr><td>Output head</td><td class="num">two \(\times\) 29: mean and log-std</td><td class="num">101 atoms (distributional)</td></tr>
+          <tr><td>Output squashing</td><td class="num">\(\tanh\), log-std clamped to [&minus;5, 0]</td><td class="num">softmax over atoms on [&minus;20, 20]</td></tr>
+          <tr><td>Parameters</td><td class="num">275,386</td><td class="num">582,629</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="small">
+      With two Q-networks the critic holds 1,165,258 parameters, so the trained model is
+      <b>1,440,644</b> parameters in total. Two target Q-networks are maintained as copies
+      (updated by Polyak averaging at \(\tau = 0.125\), not by gradient), bringing the resident
+      parameter count to 2,605,902. The actor alone is what deploys to the robot.
+    </p>
+
+    <h4 style="margin:22px 0 8px; font-size:17px;">What "batch size 8192" and "buffer size 1024" refer to</h4>
+    <p>
+      Both are stated in the units the configuration uses, which are not the same units:
+    </p>
+    <ul class="bullets">
+      <li><b>Buffer size is per environment.</b> Each of the 4096 environments keeps its own ring
+          of 1024 transitions, so total replay capacity is
+          \(1024 \times 4096 = 4{,}194{,}304\) transitions. At 50 Hz that is 20 s of experience per
+          environment &mdash; exactly one episode, so the buffer holds roughly the last episode
+          from every environment and nothing older.</li>
+      <li><b>Batch size is global.</b> The 8192 is the number of transitions in one gradient step,
+          not a per-environment count. Internally it is divided down,
+          \(8192 / 4096 = 2\) transitions drawn from each environment, so every update sees a
+          nearly uniform slice across all 4096 environments rather than a concentrated sample from
+          a few. The eight updates per step are drawn in one call of \(2 \times 8 = 16\) per
+          environment and then split, which is a throughput optimization only.</li>
+      <li><b>Symmetry augmentation doubles the batch.</b> Each sampled batch is mirrored across the
+          sagittal plane and the mirrored copy is concatenated, so the gradient for one update is
+          computed over <b>16384</b> samples, half of them synthetic. This is separate from the
+          symmetry <em>losses</em>: augmentation adds mirrored data to the ordinary objective,
+          while the losses add explicit equivariance and invariance penalty terms. Both are
+          enabled here, and the augmentation is a prerequisite for the losses.</li>
+    </ul>
 
     <h3>5.2 Termination</h3>
     <div class="tablewrap">
