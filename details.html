@@ -73,6 +73,22 @@
       charged; and in the pre-touchdown velocity, where only descent faster than the safe speed is
       charged.
     </p>
+    <p>
+      Uprightness of any body is measured through the <b>projected gravity</b> of its frame
+      \(\{X\}\),
+    </p>
+    <div class="eq">
+      $$ g^{X} \;\triangleq\; R_{WX}^{\top}\,(0,\,0,\,-1)^{\top} \;\in\; \mathbb{R}^3 $$
+    </div>
+    <p>
+      the world gravity direction expressed in that frame. Its horizontal part \(g^{X}_{xy}\)
+      vanishes exactly when the frame's \(z\)-axis is vertical and grows with tilt, so
+      \(\lVert g^{X}_{xy}\rVert\) measures tilt without needing a reference orientation and
+      without a singularity. Three bodies are scored this way: the pelvis \(g^{P}\), the torso
+      link \(g^{T}\), and each foot link \(g^{F_i}\).
+      Finally, \(\hat c = v_{xy,d}^{P}/\lVert v_{xy,d}^{P}\rVert\) is the unit commanded heading
+      direction, and \(\psi\) the base yaw angle.
+    </p>
 
     <h3>1.1 Manipulation</h3>
     <div class="tablewrap">
@@ -108,9 +124,9 @@
           <tr><td>Swing-foot trajectory</td><td class="num">5.0</td>
               <td>\(\exp\!\left(-\left[(z_l - z_l^{*})^2 + (z_r - z_r^{*})^2\right]/\sigma\right)\), \(\sigma = 0.008\), foot heights measured relative to the terrain. The reference \(z^{*}\) is defined below.</td></tr>
           <tr><td>Pelvis orientation</td><td class="num">1.0</td>
-              <td>\(\exp\!\left(-\lVert g^{P}_{xy}\rVert^2/\sigma\right)\) with \(g^{P} = R_{WP}^{\top}(0,0,-1)^{\top}\).</td></tr>
+              <td>\(\exp\!\left(-\lVert g^{P}_{xy}\rVert^2/\sigma\right)\), the projected gravity of the pelvis frame.</td></tr>
           <tr><td>Torso orientation</td><td class="num">1.0</td>
-              <td>The same kernel evaluated at the torso link, so waist lean is scored independently of pelvis tilt.</td></tr>
+              <td>\(\exp\!\left(-\lVert g^{T}_{xy}\rVert^2/\sigma\right)\) &mdash; the same kernel on the torso link, so waist lean is scored independently of pelvis tilt.</td></tr>
           <tr><td>Base height</td><td class="num">1.0</td>
               <td>\(\exp\!\left(-(100\,(z^P - z^{P}_d))^2/\sigma\right)\), \(\sigma = 3.0\). <b>The error is converted to centimetres before squaring</b>, so \(\sigma\) is \(3\ \mathrm{cm}^2\), not \(3\ \mathrm{m}^2\). \(z_d^P\) is the commanded height, which the curriculum randomizes.</td></tr>
         </tbody>
@@ -150,7 +166,7 @@
           <tr><td>Foot proximity</td><td class="num">&minus;10</td>
               <td>The indicator \(\mathbb{1}[d < 0.15\ \mathrm{m}]\), where \(d = \lvert\cos\psi\,\Delta y - \sin\psi\,\Delta x\rvert\) is the foot separation projected onto the base lateral axis. It measures crossing rather than absolute distance, and it is binary, not graded.</td></tr>
           <tr><td>Foot orientation</td><td class="num">&minus;5</td>
-              <td>\(\sum_i \lVert g^{\text{foot}}_{i,xy}\rVert\) &mdash; the <b>norm</b>, not its square, so the gradient does not vanish as the tilt shrinks.</td></tr>
+              <td>\(\sum_i \lVert g^{F_i}_{xy}\rVert\) over the two foot links &mdash; the <b>norm</b>, not its square, so the gradient does not vanish as the tilt shrinks.</td></tr>
           <tr><td>Alive / termination</td><td class="num">10 / &minus;200</td>
               <td>A constant \(+1\) per step, and a one-shot \(\mathbb{1}[\text{reset} \wedge \neg\text{timeout}]\) on failure resets. A clean 1000-step timeout costs nothing.</td></tr>
         </tbody>
@@ -196,7 +212,7 @@
         <thead><tr><th>Term</th><th>\(w_i\)</th><th>Definition</th></tr></thead>
         <tbody>
           <tr><td>Foot contact force</td><td class="num">&minus;2</td>
-              <td>\(\sum_i \left(\dfrac{(F^{\text{peak}}_{z,i} - F_{\text{th}})_+}{F_{\text{th}}}\right)^2\), \(F_{\text{th}} = 400\ \mathrm{N}\). \(F^{\text{peak}}_z\) is the maximum over <b>all physics substeps</b> of the control interval, read from a contact-force history buffer rather than sampled at the control tick. The term raises an error if that buffer is shorter than the decimation, so a single-substep strike cannot be missed.</td></tr>
+              <td>\(\sum_i \left(\dfrac{(F^{\text{peak}}_{z,i} - F_{\text{th}})_+}{F_{\text{th}}}\right)^2\), \(F_{\text{th}} = 400\ \mathrm{N}\) is a force threshold. \(F^{\text{peak}}_z\) is the maximum over <b>all physics substeps</b> of the control interval, read from a contact-force history buffer rather than sampled at the control tick. The term raises an error if that buffer is shorter than the decimation, so a single-substep strike cannot be missed.</td></tr>
           <tr><td>Pre-touchdown velocity</td><td class="num">&minus;2</td>
               <td>\(\sum_i \mathbb{1}[\text{active}_i]\left((-\dot z_i) - 0.15\right)_+^2\), where \(\text{active}_i\) requires all three of: airborne (\(F_z < 5\ \mathrm{N}\)), near ground (clearance \(< 0.05\ \mathrm{m}\)), and a non-trivial velocity command (\(> 0.03\ \mathrm{m/s}\)). Mid-swing descent is unpenalized.</td></tr>
         </tbody>
