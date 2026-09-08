@@ -1,0 +1,229 @@
+/* ---------------------------------------------------------------------------
+   Anonymous project page.
+
+   Structure follows the common "one column, wide video band" project-page
+   layout, but the visual identity here is deliberately its own: a distinct
+   accent, serif display headings, and square-cornered panels. Do not paste in
+   a stylesheet from a previous project of yours -- a reviewer who recognizes
+   the theme has de-anonymized the submission before reading a word.
+   --------------------------------------------------------------------------- */
+
+:root{
+  --text:#16181d;
+  --muted:#5d626c;
+  --border:#dcdfe4;
+  --rule:#c9ced6;
+
+  --bg:#fbfbfa;
+  --panel1:#eef1f4;      /* TL;DR */
+  --panel2:#f5f6f7;      /* Abstract */
+  --panel3:#f8f9fa;      /* details / disclosure bodies */
+
+  --accent:#1f5c4a;      /* deep green: links, rules, badge hover */
+  --accent-soft:#e7efeb;
+
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+
+  --max: 1000px;         /* normal content width */
+  --wide: 1560px;        /* wide video band */
+}
+
+*{ box-sizing: border-box; }
+html,body{ margin:0; padding:0; background:var(--bg); color:var(--text); }
+body{
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "Noto Sans", sans-serif;
+  line-height: 1.65;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+a{ color:var(--accent); text-decoration:none; border-bottom:1px solid rgba(31,92,74,.28); }
+a:hover{ border-bottom-color: var(--accent); }
+
+/* ======================
+   Layout containers
+   ====================== */
+.container{ max-width:var(--max); margin:0 auto; padding:40px 20px 70px; }
+.wide-section{ max-width:var(--wide); margin:0 auto; padding:0 20px; }
+.wide-section, .container{ overflow-x:hidden; }
+video, img{ max-width:100%; }
+
+/* ======================
+   Header
+   ====================== */
+.page-title{
+  font-family: var(--serif);
+  text-align:center;
+  font-size: 60px;
+  line-height:1.05;
+  font-weight:600;
+  margin:0 0 18px;
+  letter-spacing:-0.02em;
+}
+
+.subtitle{
+  text-align:center;
+  color:var(--muted);
+  font-size:24px;
+  line-height:1.35;
+  margin:0 0 22px;
+  font-weight:400;
+}
+
+/* Anonymity banner. Keep this until the paper is de-anonymized. */
+.anon{
+  max-width:640px;
+  margin:0 auto 18px;
+  text-align:center;
+  font-size:15px;
+  color:var(--muted);
+  background:var(--accent-soft);
+  border:1px solid var(--border);
+  padding:10px 14px;
+}
+.anon b{ color:var(--text); }
+
+.venue{ text-align:center; color:var(--muted); font-size:15px; margin:0 0 20px; }
+
+/* ======================
+   Badges
+   ====================== */
+.badges{ display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin:16px 0 10px; }
+.badge{
+  display:inline-block;
+  border:1px solid var(--rule);
+  background:#fff;
+  padding:8px 16px;
+  font-size:14px;
+  color:var(--text);
+  border-bottom-width:1px;
+}
+.badge:hover{ background:var(--accent); color:#fff; border-color:var(--accent); }
+.badge.disabled{ color:var(--muted); background:#f2f2f2; pointer-events:none; }
+
+.note{ max-width:820px; margin:12px auto 0; color:var(--muted); font-size:14px; text-align:center; }
+
+/* ======================
+   Sections
+   ====================== */
+.section{ margin-top:38px; padding-top:16px; border-top:2px solid var(--rule); }
+.section h2{ font-family:var(--serif); margin:0 0 14px; font-size:30px; font-weight:600; letter-spacing:-0.01em; }
+.section h3{ margin:20px 0 10px; font-size:20px; font-weight:600; }
+.small{ color:var(--muted); font-size:14px; }
+
+.panel{ border:1px solid var(--border); padding:18px 20px; margin-top:20px; }
+.panel h2{ margin-top:0; }
+.panel.tldr{ background:var(--panel1); }
+.panel.abstract{ background:var(--panel2); }
+.panel.tldr p{ font-size:18px; line-height:1.7; margin:0; }
+
+/* ======================
+   Media
+   ====================== */
+.video, .figure{ border:1px solid var(--border); overflow:hidden; background:#000; }
+.figure{ background:#fff; }
+.video video, .video iframe, .figure img{ width:100%; height:auto; display:block; }
+.figure-small{ max-width:760px; margin:0 auto; }
+
+/* ======================
+   Grids
+   ====================== */
+.grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); gap:16px; }
+.grid.two-col{ grid-template-columns:repeat(2, minmax(0,1fr)); gap:20px; align-items:start; }
+.grid.grid-3wide{ grid-template-columns:repeat(3, minmax(0,1fr)); gap:22px; align-items:start; }
+@media (max-width:1100px){ .grid.grid-3wide{ grid-template-columns:repeat(2, minmax(0,1fr)); } }
+@media (max-width:720px){ .grid.grid-3wide, .grid.two-col{ grid-template-columns:1fr; } }
+.vidcell h3{ margin:0 0 8px; font-size:18px; }
+.span-2{ grid-column:1 / -1; }
+
+/* ===========================================================
+   Disclosure panels -- the "put the appendix on the webpage"
+   mechanism. Collapsed by default so the page stays video-first;
+   a reviewer who wants the reward weights clicks once.
+   =========================================================== */
+details.detail{
+  border:1px solid var(--border);
+  background:var(--panel3);
+  margin:14px 0;
+}
+details.detail > summary{
+  cursor:pointer;
+  padding:12px 16px;
+  font-weight:600;
+  font-size:16px;
+  list-style:none;
+  display:flex;
+  align-items:baseline;
+  gap:10px;
+  user-select:none;
+}
+details.detail > summary::-webkit-details-marker{ display:none; }
+details.detail > summary::before{
+  content:"+";
+  font-family:var(--mono);
+  color:var(--accent);
+  font-weight:700;
+  width:1em;
+}
+details.detail[open] > summary::before{ content:"\2212"; }
+details.detail[open] > summary{ border-bottom:1px solid var(--border); }
+details.detail > summary:hover{ background:var(--accent-soft); }
+.detail-body{ padding:4px 18px 18px; }
+.detail-body > :first-child{ margin-top:12px; }
+summary .tag{ font-weight:400; font-size:13px; color:var(--muted); }
+
+/* ======================
+   Tables (reward / hyperparameter dumps)
+   ====================== */
+.tablewrap{ overflow-x:auto; margin:14px 0; border:1px solid var(--border); background:#fff; }
+table{ border-collapse:collapse; width:100%; font-size:14px; }
+th, td{ text-align:left; padding:8px 12px; border-bottom:1px solid var(--border); vertical-align:top; }
+thead th{ background:#f0f2f4; font-weight:600; white-space:nowrap; position:sticky; top:0; }
+tbody tr:last-child td{ border-bottom:none; }
+tbody tr:hover{ background:var(--accent-soft); }
+td code, th code, li code, p code{ font-family:var(--mono); font-size:.92em; background:#eef0f2; padding:1px 5px; }
+td.num{ font-family:var(--mono); white-space:nowrap; }
+
+/* ======================
+   Lists & code
+   ====================== */
+.bullets{ margin:10px 0 16px; padding-left:22px; }
+.bullets li{ margin:7px 0; }
+ul{ padding-left:22px; }
+
+pre{
+  border:1px solid var(--border);
+  padding:14px 16px;
+  overflow:auto;
+  background:#fff;
+  font-family:var(--mono);
+  font-size:13px;
+  line-height:1.55;
+}
+pre code{ background:none; padding:0; }
+
+/* Equation block, for the reward kernels. */
+.eq{
+  background:#fff;
+  border-left:3px solid var(--accent);
+  padding:10px 16px;
+  margin:12px 0;
+  overflow-x:auto;
+}
+
+/* ======================
+   Details-page nav
+   ====================== */
+.toc{ border:1px solid var(--border); background:#fff; padding:16px 20px; margin-top:20px; }
+.toc h2{ margin-top:0; font-size:20px; }
+.toc ol{ margin:0; padding-left:22px; }
+.toc li{ margin:4px 0; }
+.backlink{ display:inline-block; margin-bottom:8px; font-size:14px; }
+
+.footer{ margin-top:46px; padding-top:16px; border-top:1px solid var(--border); color:var(--muted); font-size:13px; text-align:center; }
+
+@media (max-width:720px){
+  .page-title{ font-size:40px; }
+  .subtitle{ font-size:19px; }
+}

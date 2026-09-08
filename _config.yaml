@@ -1,0 +1,10 @@
+# Present for parity with GitHub Pages' expectations only. `.nojekyll` sits
+# next to it and disables the Jekyll build entirely, so the site is served as
+# plain static files. Keep both: .nojekyll is what actually matters (it also
+# stops Pages from ignoring any future `_`-prefixed directory).
+#
+# ANONYMITY: no `author`, no `email`, no `github_username`, no `url` pointing
+# at a personal domain.
+title: "Residual Admittance Loco-Manipulation"
+description: "Anonymous project page for a double-blind submission."
+theme: null

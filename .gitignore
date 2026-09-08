@@ -1,0 +1,17 @@
+# Maintainer notes -- never publish. Contains the de-anonymization checklist
+# and the mapping from placeholder names to real ones.
+MAINTAINER_NOTES.md
+
+# Source media before scrubbing/compression. Only the scrubbed outputs in
+# assets/videos/ should ever be committed.
+raw_media/
+*.mov
+*.MOV
+*.MP4
+
+# OS / editor cruft. `.DS_Store` in particular leaks local folder names.
+.DS_Store
+Thumbs.db
+*~
+.idea/
+.vscode/
