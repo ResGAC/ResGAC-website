@@ -114,7 +114,7 @@
 
     <ul class="bullets">
       <li><b>Floating-base GAC.</b> The relative Jacobian \(J^{E}_{RE}\) is constructed in the world-aligned Cartesian frame and transformed into the end-effector body frame, so the controller sees end-effector motion <em>relative to the manipulation frame</em> rather than to the world.</li>
-      <li><b>Bounded residual in joint space.</b> \(a_{\text{arm}} = a_{\text{GAC}} + s_r\,\mathrm{clip}(a_{\text{RL,arm}}, -c_r, c_r)\), with \(s_r = 3.0\), \(c_r = 1.0\). The nominal action is also fed to the actor, so the residual is conditioned on what it is correcting.</li>
+      <li><b>Bounded residual in joint space.</b> \(a_{\text{arm}} = a_{\text{GAC}} + s_r\,\mathrm{clip}(a_{\text{RL,arm}}, -c_r, c_r)\), with \(s_r = 0.75\), \(c_r = 1.0\), bounding the correction to \(\pm 0.75\) rad per arm joint. The nominal action is also fed to the actor, so the residual is conditioned on what it is correcting.</li>
       <li><b>Ground-attached heading frame \(\{H_0\}\).</b> Yaw-only rotation with the origin projected to \(z=0\), removing roll, pitch, and vertical heave from the command while retaining the planar \((x,y,\psi)\) motion locomotion needs.</li>
       <li><b>Symmetry.</b> Sagittal-plane reflection \(\mathcal{M} = \mathrm{diag}(1,-1,1)\) applied as replay augmentation <em>and</em> as explicit actor-equivariance and critic-invariance losses.</li>
       <li><b>No retargeted human motion data.</b> Arm configurations are sampled, mapped through forward kinematics, and interpolated in \(SE(3)\) with randomized speeds.</li>
@@ -156,8 +156,8 @@
               <tr><td>Arm joint velocity</td><td>\(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;0.05</td></tr>
               <tr><td>Pose deviation</td><td>Weighted \(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;1.0</td></tr>
               <tr><td>Joint-position limit</td><td>Linear excess</td><td class="num">95%</td><td class="num">&minus;1.0</td></tr>
-              <tr><td>Foot proximity</td><td>Indicator</td><td class="num">0.15 m</td><td class="num">&minus;10</td></tr>
-              <tr><td>Foot orientation</td><td>\(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;5</td></tr>
+              <tr><td>Foot proximity</td><td>Threshold</td><td class="num">0.15 m</td><td class="num">&minus;10</td></tr>
+              <tr><td>Foot orientation</td><td>\(L_2\)</td><td class="num">&mdash;</td><td class="num">&minus;5</td></tr>
               <tr><td>Turn-in-place leakage</td><td>Gated \(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;2.5</td></tr>
               <tr><td>Heading leakage</td><td>Gait-avg. \(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;10</td></tr>
               <tr><td>Lateral leakage</td><td>Gait-avg. \(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;2</td></tr>
@@ -216,7 +216,8 @@
               <tr><td>Damping \(K_d\)</td><td class="num">set so damping ratio = 2</td></tr>
               <tr><td>Damped pseudo-inverse \(\lambda_{\text{null}}\)</td><td class="num">0.0025</td></tr>
               <tr><td>Null-space gain \(k_{\text{null}}\)</td><td class="num">50</td></tr>
-              <tr><td>Residual scale / clip \(s_r,\, c_r\)</td><td class="num">3.0, 1.0</td></tr>
+              <tr><td>Residual scale / clip \(s_r,\, c_r\)</td><td class="num">0.75, 1.0</td></tr>
+              <tr><td>Joint-position action scale</td><td class="num">0.25</td></tr>
               <tr><td>Control rate (GAC and policy)</td><td class="num">50 Hz (sim 200 Hz, decimation 4)</td></tr>
               <tr><td>Episode length</td><td class="num">20 s = 1000 steps</td></tr>
               <tr><td>Parallel environments</td><td class="num">4096</td></tr>

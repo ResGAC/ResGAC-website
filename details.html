@@ -154,7 +154,7 @@
           <tr><td>\(K_d\)</td><td class="num">set so the damping ratio is 2 (over-damped)</td></tr>
           <tr><td>\(\lambda_{\text{null}}\)</td><td class="num">0.0025</td></tr>
           <tr><td>\(k_{\text{null}}\)</td><td class="num">50</td></tr>
-          <tr><td>Residual scale \(s_r\) / clip \(c_r\)</td><td class="num">3.0 / 1.0</td></tr>
+          <tr><td>Residual scale \(s_r\) / clip \(c_r\)</td><td class="num">0.75 / 1.0</td></tr>
           <tr><td>Angular base Jacobian</td><td class="num">enabled</td></tr>
         </tbody>
       </table>
@@ -171,10 +171,22 @@
     </p>
     <div class="eq">
       $$ a_{\text{arm},t} = a_{\text{GAC},t} + s_r \cdot \mathrm{clip}\!\left(a_{\text{RL,arm},t},\, -c_r,\, c_r\right),
-         \qquad s_r = 3.0,\; c_r = 1.0 $$
+         \qquad s_r = 0.75,\; c_r = 1.0 $$
     </div>
     <p>
-      while \(a_{\text{other},t} = a_{\text{RL,other},t}\). A zero residual exactly recovers the
+      while \(a_{\text{other},t} = a_{\text{RL,other},t}\).
+    </p>
+    <p class="small">
+      <b>How \(s_r = 0.75\) is realized.</b> The action term and the controller both emit
+      <em>normalized</em> joint-position actions, which the low-level layer converts to a joint
+      target as \(q^{\text{target}} = q^{\text{default}} + \alpha\,a\) with action scale
+      \(\alpha = 0.25\). In configuration the residual is clipped at 1.0 and multiplied by 3.0,
+      so the effective joint-space scale is \(s_r = 3.0 \times 0.25 = 0.75\) and the correction
+      is bounded by \(\pm 0.75\) rad per arm joint. Reading the residual scale of 3.0 without the
+      action scale of 0.25 overstates the policy's authority by 4&times;.
+    </p>
+    <p>
+      A zero residual exactly recovers the
       nominal controller, and the learned correction is bounded by construction. Both the
       controller and the policy act in the joint-position target space of the low-level PD
       controller, so the correction composes directly with the structured feedback command rather
