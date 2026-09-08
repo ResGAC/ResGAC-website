@@ -326,7 +326,7 @@
           <tr><td>Cmd. range \((v_x,v_y,\omega_z)\)</td><td class="num">0</td><td class="num">0</td><td class="num">.3/.3/.5</td><td class="num">.7/.7/.7</td><td class="num">.7/.7/.7</td><td class="num">.7/.7/.7</td></tr>
           <tr><td>\(\sigma_P\)</td><td class="num">.02</td><td class="num">.01</td><td class="num">.02</td><td class="num">.005&rarr;.001</td><td class="num">.001/.01</td><td class="num">.001/.01</td></tr>
           <tr><td>\(\sigma_R\)</td><td class="num">.20</td><td class="num">.10</td><td class="num">.10</td><td class="num">.10&rarr;.02</td><td class="num">.02</td><td class="num">.02</td></tr>
-          <tr><td>\(\sigma_v\) (linear and angular)</td><td class="num">.25</td><td class="num">.25</td><td class="num">.25</td><td class="num">.25</td><td class="num">.25</td><td class="num">.25</td></tr>
+          <tr><td>\(\sigma_v\)</td><td class="num">.25</td><td class="num">.25</td><td class="num">.25</td><td class="num">.25&rarr;.10</td><td class="num">.10</td><td class="num">.10</td></tr>
           <tr><td>Height cmd. range [m]</td><td class="num">0.73</td><td class="num">[.68, .78]</td><td class="num">[.68, .78]</td><td class="num">[.55, .80]</td><td class="num">[.55, .80]</td><td class="num">[.55, .80]</td></tr>
           <tr><td>Early stop</td><td class="num">990 / p1000 / m5k</td><td class="num">990 / p2000 / m5k</td><td class="num">990 / p2000 / m10k</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td></tr>
           <tr><td>Init. \(q\) scale</td><td class="num">[.9, 1.1]</td><td class="num">[.85, 1.15]</td><td class="num">[.85, 1.15]</td><td class="num">[.7, 1.3]</td><td class="num">[.7, 1.3]</td><td class="num">[.7, 1.3]</td></tr>
@@ -361,16 +361,16 @@
         <tbody>
           <tr><td>D</td><td><code>tracking_ee_pos</code></td><td>tracking_sigma</td><td class="num">0.005 &rarr; 0.001</td><td class="num">20% &ndash; 70%</td></tr>
           <tr><td>D</td><td><code>tracking_ee_rot</code></td><td>tracking_sigma</td><td class="num">0.10 &rarr; 0.02</td><td class="num">20% &ndash; 70%</td></tr>
+          <tr><td>D</td><td><code>tracking_lin_vel</code></td><td>tracking_sigma</td><td class="num">0.25 &rarr; 0.10</td><td class="num">20% &ndash; 80%</td></tr>
           <tr><td>D</td><td><code>penalty_arm_residual_l2</code></td><td>weight</td><td class="num">&minus;0.10 &rarr; &minus;0.05</td><td class="num">0% &ndash; 50%</td></tr>
         </tbody>
       </table>
     </div>
     <p class="small">
-      Velocity-tracking tolerance is held at \(\sigma_v = 0.25\) for both linear and angular
-      components across the whole pipeline rather than tightened: net heading and cross-track
-      fidelity are enforced by the gait-averaged leakage penalties (&sect;6.5), which do not punish
-      the intra-stride oscillation intrinsic to bipedal gait. Only the end-effector kernels and the
-      residual penalty are annealed.
+      \(\sigma_v\) refers to the <b>linear</b> velocity-tracking kernel. Angular velocity keeps a
+      fixed tolerance of 0.25 throughout, rather than being tightened alongside it: net heading
+      fidelity is enforced by the gait-averaged leakage penalty (&sect;6.5), which does not punish
+      the intra-stride yaw oscillation intrinsic to bipedal gait.
     </p>
 
     <p class="small">
