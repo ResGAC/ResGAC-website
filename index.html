@@ -114,7 +114,7 @@
 
     <ul class="bullets">
       <li><b>Floating-base GAC.</b> The relative Jacobian \(J^{E}_{RE}\) is constructed in the world-aligned Cartesian frame and transformed into the end-effector body frame, so the controller sees end-effector motion <em>relative to the manipulation frame</em> rather than to the world.</li>
-      <li><b>Bounded residual in joint space.</b> \(a_{\text{arm}} = a_{\text{GAC}} + s_r\,\mathrm{clip}(a_{\text{RL,arm}}, -c_r, c_r)\), with \(s_r = 0.75\), \(c_r = 1.0\). The nominal action is also fed to the actor, so the residual is conditioned on what it is correcting.</li>
+      <li><b>Bounded residual in joint space.</b> \(a_{\text{arm}} = a_{\text{GAC}} + s_r\,\mathrm{clip}(a_{\text{RL,arm}}, -c_r, c_r)\), with \(s_r = 3.0\), \(c_r = 1.0\). The nominal action is also fed to the actor, so the residual is conditioned on what it is correcting.</li>
       <li><b>Ground-attached heading frame \(\{H_0\}\).</b> Yaw-only rotation with the origin projected to \(z=0\), removing roll, pitch, and vertical heave from the command while retaining the planar \((x,y,\psi)\) motion locomotion needs.</li>
       <li><b>Symmetry.</b> Sagittal-plane reflection \(\mathcal{M} = \mathrm{diag}(1,-1,1)\) applied as replay augmentation <em>and</em> as explicit actor-equivariance and critic-invariance losses.</li>
       <li><b>No retargeted human motion data.</b> Arm configurations are sampled, mapped through forward kinematics, and interpolated in \(SE(3)\) with randomized speeds.</li>
@@ -126,7 +126,7 @@
          =================================================================== -->
 
     <details class="detail">
-      <summary>Reward terms and final-stage weights <span class="tag">&mdash; Table I, all 24 terms</span></summary>
+      <summary>Reward terms and final-stage weights <span class="tag">&mdash; Table I, all 25 active terms</span></summary>
       <div class="detail-body">
         <p class="small">
           Total reward \(r_t = \sum_i w_i r_{i,t}\). &ldquo;Exp.&rdquo; denotes an exponential kernel.
@@ -147,15 +147,16 @@
               <tr><td>Torso orientation</td><td>Exp. \(L_2^2\)</td><td class="num">0.04</td><td class="num">1.0</td></tr>
               <tr><td>Base height</td><td>Exp. \(L_2^2\)</td><td class="num">3.0</td><td class="num">1.0</td></tr>
 
-              <tr><td rowspan="16">Reg.</td><td>Arm residual</td><td>\(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;0.05</td></tr>
+              <tr><td rowspan="17">Reg.</td><td>Arm residual</td><td>\(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;0.05</td></tr>
               <tr><td>EEF body twist</td><td>\(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;0.05</td></tr>
               <tr><td>Arm action rate</td><td>\(\lVert \Delta a\rVert^2\)</td><td class="num">&mdash;</td><td class="num">&minus;0.5</td></tr>
               <tr><td>Non-arm action rate</td><td>\(\lVert \Delta a\rVert^2\)</td><td class="num">&mdash;</td><td class="num">&minus;1.0</td></tr>
-              <tr><td>Mean-action accel.</td><td>\(\lVert \Delta^2 \mu\rVert^2\)</td><td class="num">&mdash;</td><td class="num">&minus;0.10</td></tr>
+              <tr><td>Mean-action accel. (arm)</td><td>\(\lVert \Delta^2 \mu\rVert^2\)</td><td class="num">&mdash;</td><td class="num">&minus;0.10</td></tr>
+              <tr><td>Mean-action accel. (non-arm)</td><td>\(\lVert \Delta^2 \mu\rVert^2\)</td><td class="num">&mdash;</td><td class="num">&minus;0.10</td></tr>
               <tr><td>Arm joint velocity</td><td>\(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;0.05</td></tr>
               <tr><td>Pose deviation</td><td>Weighted \(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;1.0</td></tr>
               <tr><td>Joint-position limit</td><td>Linear excess</td><td class="num">95%</td><td class="num">&minus;1.0</td></tr>
-              <tr><td>Foot proximity</td><td>\(L_2^2\)</td><td class="num">0.15 m</td><td class="num">&minus;5</td></tr>
+              <tr><td>Foot proximity</td><td>Indicator</td><td class="num">0.15 m</td><td class="num">&minus;10</td></tr>
               <tr><td>Foot orientation</td><td>\(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;5</td></tr>
               <tr><td>Turn-in-place leakage</td><td>Gated \(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;2.5</td></tr>
               <tr><td>Heading leakage</td><td>Gait-avg. \(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;10</td></tr>
@@ -172,7 +173,7 @@
     </details>
 
     <details class="detail">
-      <summary>Training curriculum <span class="tag">&mdash; Table II, six stages, ~18 h on one L40S</span></summary>
+      <summary>Training curriculum <span class="tag">&mdash; Table II, six stages, 201,911 iterations, ~18 h on one L40S</span></summary>
       <div class="detail-body">
         <div class="tablewrap">
           <table>
@@ -183,9 +184,12 @@
               <tr><td>Cmd. range \((v_x,v_y,\omega_z)\)</td><td class="num">0</td><td class="num">0</td><td class="num">.3/.3/.5</td><td class="num">.7/.7/.7</td><td class="num">.7/.7/.7</td><td class="num">.7/.7/.7</td></tr>
               <tr><td>\(\sigma_P\)</td><td class="num">.02</td><td class="num">.01</td><td class="num">.02</td><td class="num">.005&rarr;.001</td><td class="num">.001/.01</td><td class="num">.001/.01</td></tr>
               <tr><td>\(\sigma_R\)</td><td class="num">.20</td><td class="num">.10</td><td class="num">.10</td><td class="num">.10&rarr;.02</td><td class="num">.02</td><td class="num">.02</td></tr>
-              <tr><td>\(\sigma_v\)</td><td class="num">.25</td><td class="num">.25</td><td class="num">.25</td><td class="num">.25&rarr;.10</td><td class="num">.10</td><td class="num">.10</td></tr>
+              <tr><td>\(\sigma_v\) (linear)</td><td class="num">.25</td><td class="num">.25</td><td class="num">.25</td><td class="num">.25&rarr;.10</td><td class="num">.10</td><td class="num">.25<sup>&dagger;</sup></td></tr>
+              <tr><td>\(\sigma_v\) (angular)</td><td class="num">.25</td><td class="num">.25</td><td class="num">.25</td><td class="num">.25</td><td class="num">.25</td><td class="num">.25</td></tr>
+              <tr><td>Touchdown gate scale</td><td class="num">0.25</td><td class="num">0.25</td><td class="num">0.25</td><td class="num">4.0</td><td class="num">4.0</td><td class="num">4.0</td></tr>
+              <tr><td>Height cmd. range [m]</td><td class="num">0.73</td><td class="num">[.68, .78]</td><td class="num">[.68, .78]</td><td class="num">[.55, .80]</td><td class="num">[.55, .80]</td><td class="num">[.55, .80]</td></tr>
               <tr><td>Init. \(q\) scale</td><td class="num">[.9, 1.1]</td><td class="num">[.85, 1.15]</td><td class="num">[.85, 1.15]</td><td class="num">[.7, 1.3]</td><td class="num">[.7, 1.3]</td><td class="num">[.7, 1.3]</td></tr>
-              <tr><td>\(w_{\text{rot}}\)</td><td class="num">2.5</td><td class="num">2.5</td><td class="num">2.5</td><td class="num">3.0</td><td class="num">3.0</td><td class="num">3.0</td></tr>
+              <tr><td>\(w_{\text{rot}}\)</td><td class="num">2.5</td><td class="num">2.5</td><td class="num">2.5</td><td class="num">2.5</td><td class="num">3.0</td><td class="num">3.0</td></tr>
               <tr><td>\(w_{\text{res}}\)</td><td class="num">&minus;.10</td><td class="num">&minus;.10</td><td class="num">&minus;.10</td><td class="num">&minus;.10&rarr;&minus;.05</td><td class="num">&minus;.05</td><td class="num">&minus;.05</td></tr>
               <tr><td>\(w_{\text{pose}}\)</td><td class="num">&minus;.5</td><td class="num">&minus;.5</td><td class="num">&minus;.5</td><td class="num">&minus;1.0</td><td class="num">&minus;1.0</td><td class="num">&minus;1.0</td></tr>
               <tr><td>\(w_{\dot q,\text{arm}}\)</td><td class="num">&minus;.0125</td><td class="num">&minus;.0125</td><td class="num">&minus;.0125</td><td class="num">&minus;.02</td><td class="num">&minus;.05</td><td class="num">&minus;.05</td></tr>
@@ -196,7 +200,10 @@
         <p class="small">
           Stages A&ndash;C stop early once stable, hence the \(\le\) on their budgets. \(\sigma_P\)
           for stages E and F lists \((\sigma_2, \sigma_1)\) of the combined \(L_2^2 + L_1\) kernel.
+          Arrows denote in-stage linear annealing, not a step between stages.
           Policy and optimizer checkpoints transfer sequentially between stages.
+          <sup>&dagger;</sup> Stage F carries no \(\sigma\) scheduler, so linear-velocity \(\sigma\)
+          reverts to its config value of .25 rather than holding the .10 reached in stage E.
         </p>
       </div>
     </details>
@@ -213,18 +220,24 @@
               <tr><td>Damping \(K_d\)</td><td class="num">set so damping ratio = 2</td></tr>
               <tr><td>Damped pseudo-inverse \(\lambda_{\text{null}}\)</td><td class="num">0.0025</td></tr>
               <tr><td>Null-space gain \(k_{\text{null}}\)</td><td class="num">50</td></tr>
-              <tr><td>Residual scale / clip \(s_r,\, c_r\)</td><td class="num">0.75, 1.0</td></tr>
-              <tr><td>Control rate (GAC and policy)</td><td class="num">50 Hz</td></tr>
+              <tr><td>Residual scale / clip \(s_r,\, c_r\)</td><td class="num">3.0, 1.0</td></tr>
+              <tr><td>Control rate (GAC and policy)</td><td class="num">50 Hz (sim 200 Hz, decimation 4)</td></tr>
+              <tr><td>Episode length</td><td class="num">20 s = 1000 steps</td></tr>
               <tr><td>Parallel environments</td><td class="num">4096</td></tr>
               <tr><td>Hardware / wall-clock</td><td class="num">1&times; NVIDIA L40S, ~18 h</td></tr>
-              <tr><td>Algorithm</td><td class="num">FastSAC, asymmetric actor-critic</td></tr>
+              <tr><td>Algorithm</td><td class="num">FastSAC, distributional critic</td></tr>
+              <tr><td>Actor / critic hidden dim</td><td class="num">512 / 768</td></tr>
+              <tr><td>Total iterations (actual)</td><td class="num">201,911</td></tr>
               <tr><td>Deployment kinematics</td><td class="num">pinocchio</td></tr>
             </tbody>
           </table>
         </div>
         <p class="small">
           PD gains follow BeyondMimic. The critic additionally receives pelvis linear velocity,
-          which is never provided to the actor during training or deployment.
+          which is never provided to the actor during training or deployment. The nominal budget is
+          210k iterations; early stopping in stages A&ndash;C brought the actual run to 201,911.
+          Full optimizer and network settings are on the
+          <a href="details.html#hparams">training details page</a>.
         </p>
       </div>
     </details>
