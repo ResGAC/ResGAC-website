@@ -3,12 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>ManTra &mdash; Training Details</title>
+  <title>ManTra &mdash; Additional Training Details</title>
   <meta name="robots" content="noindex" />
   <link rel="stylesheet" href="assets/css/style.css" />
-
-  <!-- Pinned to an exact version: an unpinned CDN tag can change between
-       submission and a reviewer opening the link. -->
   <script>
     window.MathJax = {
       tex: { inlineMath: [['\\(', '\\)']], displayMath: [['$$', '$$']] },
@@ -23,460 +20,362 @@
 
   <a class="backlink" href="index.html">&larr; Back to the project page</a>
 
-  <h1 class="page-title" style="font-size:44px;">ManTra &mdash; Training Details</h1>
+  <h1 class="page-title" style="font-size:42px;">Additional Training Details</h1>
   <p class="subtitle" style="font-size:19px;">
-    The full specification behind the results, at a level of detail the paper's page budget cannot carry.
+    What the paper does not have room for: every reward term defined, the full observation
+    pipeline, and the baseline's hyperparameters.
   </p>
 
   <div class="anon"><b>Anonymous submission.</b> The framework name and repository are withheld during review.</div>
 
+  <p class="note" style="max-width:760px;">
+    This page is a supplement, not a summary. The method, the GAC derivation, the frame
+    construction, the symmetry losses, and the curriculum schedule are in the paper and are not
+    repeated here. What follows is the material a page limit forces out: the exact definition of
+    all 31 reward signals, the observation pre-processing, and the settings that make the
+    comparison against E2E-RL controlled.
+  </p>
+
   <div class="toc">
     <h2>Contents</h2>
     <ol>
-      <li><a href="#notation">Frames and notation</a></li>
-      <li><a href="#jacobian">Relative Jacobian on a floating base</a></li>
-      <li><a href="#gac">Geometric admittance control</a></li>
-      <li><a href="#residual">Residual RL and the observation</a></li>
-      <li><a href="#frames">Manipulation reference frame selection</a></li>
-      <li><a href="#rewards">Reward specification</a></li>
-      <li><a href="#curriculum">Curriculum</a></li>
-      <li><a href="#symmetry">Symmetry augmentation and regularization</a></li>
-      <li><a href="#impl">Implementation and hardware</a></li>
-      <li><a href="#baselines">Baselines and evaluation protocol</a></li>
-      <li><a href="#hparams">Optimizer, network, and termination settings</a></li>
+      <li><a href="#rewards">Complete reward specification &mdash; all 31 terms</a></li>
+      <li><a href="#obs">Observation specification and pre-processing</a></li>
+      <li><a href="#action">Action scaling</a></li>
+      <li><a href="#curriculum">Curriculum details not in Table&nbsp;II</a></li>
+      <li><a href="#hparams">Optimizer, network, termination, simulation</a></li>
+      <li><a href="#baseline">E2E-RL baseline &mdash; exactly what differs</a></li>
+      <li><a href="#why">Why these values</a></li>
+      <li><a href="#gaps">Still undocumented</a></li>
     </ol>
   </div>
 
-  <!-- ================= 1 ================= -->
-  <div class="section" id="notation">
-    <h2>1. Frames and notation</h2>
+  <!-- ==================== 1. REWARDS ==================== -->
+  <div class="section" id="rewards">
+    <h2>1. Complete reward specification</h2>
     <p>
-      Three frame types matter: the world frame \(\{W\}\) with fixed orientation, the manipulation
-      reference frame \(\{R\}\) in which the end-effector command and the controller are defined,
-      and the end-effector frame \(\{E\}\). We additionally define a Cartesian frame \(\{C_F\}\)
-      whose origin coincides with that of \(\{F\}\) while its orientation is aligned with
-      \(\{W\}\).
+      Table&nbsp;I lists names, forms, and weights. Below is the definition of each of the 31
+      registered terms as implemented, including the four that are registered but carry zero
+      weight in the reported configuration. Notation: \(N\) is the number of environments,
+      \(i \in \{l, r\}\) indexes arms or feet, \(q\) joint positions, \(v_{xy}\) and \(\omega_z\)
+      body-frame planar and yaw velocity, \(c = (c_{xy}, \omega_z^{\text{cmd}})\) the locomotion
+      command, and \(\phi \in [-\pi, \pi]^2\) the per-leg gait phase.
     </p>
-    <div class="eq">
-      $$ g_{FE} = \begin{bmatrix} R_{FE} & p_{FE} \\ 0 & 1 \end{bmatrix} \in SE(3) $$
-    </div>
-    <p>
-      \(E\) denotes both the left and right end-effectors generically, so \(g_{RE}\) compactly
-      represents the pair \((g_{RE_l}, g_{RE_r})\). A twist is
-      \(V^{F}_{RF} = [v^{F}_{RF};\, \omega^{F}_{RF}] \in \mathbb{R}^6\), and the body-frame
-      Jacobian is defined through \(V^{F}_{RF} = J^{F}_{RF}\dot q\).
-    </p>
-    <p>The command at time \(t\) is</p>
-    <div class="eq">
-      $$ c_t = \left(v^{P}_{d,x},\; v^{P}_{d,y},\; \omega^{P}_{d,z},\; z^{P}_{d},\; g_{RD}\right) $$
-    </div>
-    <p>
-      &mdash; planar locomotion velocities, desired pelvis height, and the desired left and right
-      end-effector poses expressed in \(\{R\}\). Note that the reference frame propagates to the
-      desired <em>world</em> trajectory as \(g_{WD} = g_{WR}\,g_{RD}\): motion of \(\{R\}\) moves
-      the world-frame target even when \(g_{RD}\) is fixed. This is precisely why a pelvis-frame
-      representation transmits locomotion-induced roll, pitch, and vertical oscillation into the
-      commanded end-effector motion, and why the choice of \(\{R\}\) is a design decision rather
-      than a convention.
-    </p>
-  </div>
 
-  <!-- ================= 2 ================= -->
-  <div class="section" id="jacobian">
-    <h2>2. Relative Jacobian on a floating base</h2>
-    <p>
-      GAC needs the body-frame relative Jacobian \(J^{E}_{RE}\) and relative velocity
-      \(V^{E}_{RE}\), which describe end-effector motion <em>relative to a moving reference
-      frame</em>. Simulator and deployment kinematics libraries provide Jacobians and velocities
-      of individual frames relative to the world, not relative quantities between frames. We
-      therefore construct the relative motion in the world-aligned Cartesian representation first
-      and then transform it into the end-effector body frame.
-    </p>
-    <div class="eq">
-      $$ V^{C_E}_{RE} = V^{C_E}_{WE} - V^{C_E}_{WR} $$
-      $$ V^{C_E}_{WR} = \mathrm{Ad}_{g_{C_E C_R}} V^{C_R}_{WR}
-         = \begin{bmatrix} I & -(p_{WC_E} - p_{WC_R})^{\wedge} \\ 0 & I \end{bmatrix} V^{C_R}_{WR} $$
-    </div>
-    <p>giving the relative Jacobian and its body-frame form:</p>
-    <div class="eq">
-      $$ J^{C_E}_{RE} = J^{C_E}_{WE} - \mathrm{Ad}_{g_{C_E C_R}} J^{C_R}_{WR},
-         \qquad
-         J^{E}_{RE} = \begin{bmatrix} R^{T}_{WE} & 0 \\ 0 & R^{T}_{WE} \end{bmatrix} J^{C_E}_{RE} $$
-    </div>
-    <p class="small">
-      \(J^{E}_{RE}\) contains <em>all</em> joints contributing to end-effector motion relative to
-      \(R\), torso joints included. The full Jacobian is used to evaluate \(V^{E}_{RE}\), but GAC is
-      applied only through the arm-joint columns &mdash; the remaining joints are left entirely to
-      the RL policy.
-    </p>
-  </div>
-
-  <!-- ================= 3 ================= -->
-  <div class="section" id="gac">
-    <h2>3. Geometric admittance control</h2>
-    <p>
-      GAC is used here as a geometric task-space <em>tracking</em> controller that generates joint
-      position targets from \(SE(3)\) pose error without a measured external wrench, so the
-      resulting command can be read as a differential IK step. The desired task-space dynamics are
-    </p>
-    <div class="eq">
-      $$ M\dot V + K_d V + f_G(g_{RE}, g_{RD}) = 0 $$
-    </div>
-    <p>with the geometric elastic wrench</p>
-    <div class="eq">
-      $$ f_G(g, g_D) = \begin{bmatrix} f_p \\ f_R \end{bmatrix}
-         = \begin{bmatrix} R^{T} R_D K_p R_D^{T}(p - p_D) \\
-           \left(K_p R_D^{T} R - R^{T} R_D K_R\right)^{\vee} \end{bmatrix} $$
-    </div>
-    <p>
-      This feedback is <b>left-invariant</b>: for any \(g_l \in SE(3)\),
-      \(f_G(g_l g,\, g_l g_D) = f_G(g,\, g_D)\). A common change of reference coordinate frame
-      therefore leaves the feedback law unchanged &mdash; which is what permits the same GAC law to
-      be used across \(\{P\}\), \(\{H\}\), and \(\{H_0\}\) without re-derivation.
-    </p>
-    <p>Discretizing and mapping to joint space with null-space regulation:</p>
-    <div class="eq">
-      $$ V_{D,t} = V_t + \Delta t\, M^{-1}\left(-f_{G,t} - K_d V_t\right) $$
-      $$ \dot q_{D,t} = J^{\dagger}_{\lambda,t} V_{D,t} + \dot q_{\text{null},t},
-         \qquad q_{D,t} = q_t + \Delta t\, \dot q_{D,t} $$
-      $$ J^{\dagger}_{\lambda} = J^{\top}\!\left(JJ^{\top} + \lambda_{\text{null}} I\right)^{-1},
-         \qquad
-         \dot q_{\text{null}} = \left(I - J^{\dagger}_{\lambda} J\right)\left(-k_{\text{null}}(q_t - q_{\text{rest}})\right) $$
-    </div>
-    <p>The nominal GAC action is \(a_{\text{GAC},t} = q_{D,t}\).</p>
-
+    <h3>1.1 Manipulation (2 terms)</h3>
     <div class="tablewrap">
       <table>
-        <thead><tr><th>Parameter</th><th>Value</th></tr></thead>
+        <thead><tr><th>Term</th><th>\(w\)</th><th>Definition</th></tr></thead>
         <tbody>
-          <tr><td>\(M\)</td><td class="num">\(\mathrm{diag}(1.5 I_3,\; 2.25 I_3)\)</td></tr>
-          <tr><td>\(K_p = K_R\)</td><td class="num">\(5000 I_3\)</td></tr>
-          <tr><td>\(K_d\)</td><td class="num">set so the damping ratio is 2 (over-damped)</td></tr>
-          <tr><td>\(\lambda_{\text{null}}\)</td><td class="num">0.0025</td></tr>
-          <tr><td>\(k_{\text{null}}\)</td><td class="num">50</td></tr>
-          <tr><td>Residual scale \(s_r\) / clip \(c_r\)</td><td class="num">0.75 / 1.0</td></tr>
-          <tr><td>Angular base Jacobian</td><td class="num">enabled</td></tr>
+          <tr>
+            <td><code>tracking_ee_pos</code></td><td class="num">4.0</td>
+            <td>\(\exp\!\left(-\dfrac{e_2}{\sigma_2} - \dfrac{e_1}{\sqrt{3}\,\sigma_1}\right)\),
+                \(e_2 = \operatorname{mean}_i \lVert p_i - p_i^{*}\rVert_2^2\),
+                \(e_1 = \operatorname{mean}_i \lVert p_i - p_i^{*}\rVert_1\).
+                Stages A&ndash;D use the \(L_2^2\)-only form \(\exp(-e_2/\sigma_P)\).
+                Setting \(\sigma_1 \le 0\) disables the \(L_1\) term, which is how the baseline
+                runs (&sect;6).</td>
+          </tr>
+          <tr>
+            <td><code>tracking_ee_rot</code></td><td class="num">3.0</td>
+            <td>\(\exp(-e_R/\sigma_R)\), \(e_R = \operatorname{mean}_i\left(3 - \operatorname{tr}(R_i^{\top} R_i^{*})\right)\).
+                Both poses are taken in the manipulation frame; \(R^{*}\) is reconstructed from the
+                6D rotation representation carried in the command.</td>
+          </tr>
         </tbody>
       </table>
     </div>
-  </div>
 
-  <!-- ================= 4 ================= -->
-  <div class="section" id="residual">
-    <h2>4. Residual RL and the observation</h2>
-    <p>
-      The policy output is partitioned into arm and remaining joints,
-      \(a_{\text{RL},t} = \pi_\theta(o_t) = [a^{\top}_{\text{RL,arm},t},\, a^{\top}_{\text{RL,other},t}]^{\top}\).
-      The applied arm action is
-    </p>
-    <div class="eq">
-      $$ a_{\text{arm},t} = a_{\text{GAC},t} + s_r \cdot \mathrm{clip}\!\left(a_{\text{RL,arm},t},\, -c_r,\, c_r\right),
-         \qquad s_r = 0.75,\; c_r = 1.0 $$
+    <h3>1.2 Locomotion (6 terms)</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Term</th><th>\(w\)</th><th>Definition</th></tr></thead>
+        <tbody>
+          <tr><td><code>tracking_lin_vel</code></td><td class="num">2.0</td>
+              <td>\(\exp\!\left(-\lVert c_{xy} - v_{xy}\rVert^2/\sigma_v\right)\). \(v_{xy}\) is the root linear velocity rotated into the base frame.</td></tr>
+          <tr><td><code>tracking_ang_vel</code></td><td class="num">1.5</td>
+              <td>\(\exp\!\left(-(\omega_z^{\text{cmd}} - \omega_z)^2/\sigma_\omega\right)\), \(\sigma_\omega = 0.25\) throughout.</td></tr>
+          <tr><td><code>feet_phase</code></td><td class="num">5.0</td>
+              <td>\(\exp\!\left(-\left[(z_l - z_l^{*})^2 + (z_r - z_r^{*})^2\right]/\sigma\right)\), \(\sigma = 0.008\).
+                  Foot heights are measured relative to the terrain. See &sect;1.6 for \(z^{*}\).</td></tr>
+          <tr><td><code>tracking_orientation</code></td><td class="num">1.0</td>
+              <td>\(\exp\!\left(-\lVert g^{P}_{xy}\rVert^2/\sigma\right)\), \(g^{P} = R_{WP}^{\top}(0,0,-1)^{\top}\) &mdash; pelvis uprightness.</td></tr>
+          <tr><td><code>tracking_torso_orientation</code></td><td class="num">1.0</td>
+              <td>Same kernel evaluated at <code>torso_link</code>, so waist lean is penalized independently of pelvis tilt.</td></tr>
+          <tr><td><code>tracking_base_height</code></td><td class="num">1.0</td>
+              <td>\(\exp\!\left(-(100 \cdot (z_P - z^{*}_P))^2/\sigma\right)\), \(\sigma = 3.0\).
+                  <b>The error is converted to centimetres before squaring</b>, so \(\sigma = 3.0\) is \(3\ \text{cm}^2\), not \(3\ \text{m}^2\).
+                  \(z^{*}_P\) is the commanded height, which the curriculum randomizes.</td></tr>
+        </tbody>
+      </table>
     </div>
-    <p>
-      while \(a_{\text{other},t} = a_{\text{RL,other},t}\).
-    </p>
+
+    <h3>1.3 Regularization &mdash; action and posture (8 terms)</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Term</th><th>\(w\)</th><th>Definition</th></tr></thead>
+        <tbody>
+          <tr><td><code>penalty_arm_residual_l2</code></td><td class="num">&minus;0.05</td>
+              <td>\(\lVert r_{\text{arm}}\rVert^2\), where \(r_{\text{arm}}\) is the buffer the action term stores &mdash; the residual <b>after</b> clipping and scaling, i.e. \(s\cdot\operatorname{clip}(a,\pm c)\) with \(s = 3\). It is therefore \(9\lVert\operatorname{clip}(a)\rVert^2\) in raw policy-output units.</td></tr>
+          <tr><td><code>penalty_ee_body_twist</code></td><td class="num">&minus;0.05</td>
+              <td>\(\sum_i \lVert V^{E}_{RE,i}\rVert^2\) over both arms, read from the controller's ground-truth twist \(V^{E,\text{true}}_{RE}\) (the noise-free one, not the actor's copy). Falls back to a rigid-body computation when no controller is present.</td></tr>
+          <tr><td><code>penalty_arm_action_rate</code></td><td class="num">&minus;0.5</td>
+              <td>\(\lVert a^{\text{arm}}_t - a^{\text{arm}}_{t-1}\rVert^2\) over the 14 arm channels of the raw action.</td></tr>
+          <tr><td><code>penalty_leg_action_rate</code></td><td class="num">&minus;1.0</td>
+              <td>Same over the 12 leg channels. Table&nbsp;I calls this "non-arm action rate".</td></tr>
+          <tr><td><code>penalty_mean_action_accel_arm</code></td><td class="num">&minus;0.10</td>
+              <td>\(\lVert \mu_t - 2\mu_{t-1} + \mu_{t-2}\rVert^2\) over arm channels. \(\mu\) is the <b>deterministic policy mean</b> supplied by the algorithm, not the sampled action &mdash; penalizing the sample's second difference would mostly penalize exploration noise.</td></tr>
+          <tr><td><code>penalty_mean_action_accel_leg</code></td><td class="num">&minus;0.10</td>
+              <td>Same over leg channels. Table&nbsp;I's single "mean-action accel." row covers both; they are two separately registered terms with equal weight.</td></tr>
+          <tr><td><code>penalty_arm_dof_vel</code></td><td class="num">&minus;0.05</td>
+              <td>\(\sum_{j \in \text{arm}} \dot q_j^2\), measured joint velocity, not commanded.</td></tr>
+          <tr><td><code>penalty_pose_deviation</code></td><td class="num">&minus;1.0</td>
+              <td>\(\sum_j w_j (q_j - q_j^{\text{def}})^2\) with per-DOF weights. Arm weights are forced to zero (<code>include_arm_dofs=False</code>), so this shapes legs and waist only.
+                  Weights: hip pitch 0.01, hip roll 1.0, hip yaw 5.0, knee 0.01, ankle pitch/roll 5.0 (per leg), waist yaw/roll/pitch 50.0.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>1.4 Regularization &mdash; limits, feet, survival (5 terms)</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Term</th><th>\(w\)</th><th>Definition</th></tr></thead>
+        <tbody>
+          <tr><td><code>penalty_dof_pos_limits</code></td><td class="num">&minus;1.0</td>
+              <td>\(\sum_j \left[(q^{\text{lo}}_j - q_j)_+ + (q_j - q^{\text{hi}}_j)_+\right]\), <b>linear</b> excess, not squared. Soft limits are the hardware limits shrunk about their midpoint: \(q^{\text{lo/hi}} = m \mp 0.5\,\rho\,r\) with \(m\) the midpoint, \(r\) the range, \(\rho = 0.95\).</td></tr>
+          <tr><td><code>penalty_close_feet_xy</code></td><td class="num">&minus;10</td>
+              <td>Indicator \(\mathbb{1}[d < 0.15\ \text{m}]\), \(d = \lvert \cos\psi\,\Delta y - \sin\psi\,\Delta x\rvert\): the foot separation projected onto the base's lateral axis, so it measures crossing rather than absolute distance. Binary, not graded.</td></tr>
+          <tr><td><code>penalty_feet_ori</code></td><td class="num">&minus;5</td>
+              <td>\(\sum_i \lVert g^{\text{foot}}_{i,xy}\rVert\) &mdash; the <b>norm</b>, not its square. Linear growth keeps a constant gradient as tilt shrinks.</td></tr>
+          <tr><td><code>alive</code></td><td class="num">+10</td>
+              <td>Constant \(1\) per step.</td></tr>
+          <tr><td><code>penalty_termination</code></td><td class="num">&minus;200</td>
+              <td>\(\mathbb{1}[\text{reset} \wedge \neg\text{timeout}]\) &mdash; fires on failure resets only; a clean 1000-step timeout costs nothing.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>1.5 Regularization &mdash; command-gated locomotion penalties (4 active, 3 inactive)</h3>
     <p class="small">
-      <b>How \(s_r = 0.75\) is realized.</b> The action term and the controller both emit
-      <em>normalized</em> joint-position actions, which the low-level layer converts to a joint
-      target as \(q^{\text{target}} = q^{\text{default}} + \alpha\,a\) with action scale
-      \(\alpha = 0.25\). In configuration the residual is clipped at 1.0 and multiplied by 3.0,
-      so the effective joint-space scale is \(s_r = 3.0 \times 0.25 = 0.75\) and the correction
-      is bounded by \(\pm 0.75\) rad per arm joint. Reading the residual scale of 3.0 without the
-      action scale of 0.25 overstates the policy's authority by 4&times;.
+      Each is masked by the commanded behaviour, so a term is inert unless the command puts the
+      robot in the regime it polices. Thresholds: \(\varepsilon_v = 0.03\) or \(0.05\) m/s on
+      \(\lVert c_{xy}\rVert\), \(\varepsilon_\omega = 0.03\) or \(0.1\) rad/s on \(\lvert\omega_z^{\text{cmd}}\rvert\).
     </p>
-    <p>
-      A zero residual exactly recovers the
-      nominal controller, and the learned correction is bounded by construction. Both the
-      controller and the policy act in the joint-position target space of the low-level PD
-      controller, so the correction composes directly with the structured feedback command rather
-      than through a second control interface.
-    </p>
-    <p>The actor observation is</p>
-    <div class="eq">
-      $$ o_t = \left(c_t,\; q_t,\; \dot q_t,\; g^{\text{proj}}_t,\; \omega_t,\; a_{\text{GAC},t},\;
-         g_{DE,t},\; p^{\text{sat}}_{DE,t},\; V^{E}_{RE,t},\; a_{\text{RL},t-1},\; a_{\text{RL},t-2},\; \phi_t \right) $$
-    </div>
-    <ul class="bullets">
-      <li><b>\(a_{\text{GAC},t}\) is in the observation.</b> The residual policy sees the structured command it is correcting.</li>
-      <li><b>Pose error \(g_{DE,t}\)</b> is represented by its 3D translation and the 6D rotation representation.</li>
-      <li><b>Saturated position feature.</b> \(p^{\text{sat}}_{DE,t} = \tanh(100 \cdot p_{DE,t})\), retaining sensitivity to small translational errors while limiting range &mdash; the feature that makes millimetre-scale tracking learnable at all.</li>
-      <li><b>Gait state \(\phi_t\)</b> supplies the sinusoidal phase variables used for locomotion.</li>
-      <li><b>Two previous residual actions</b> provide the short-term history the acceleration penalty needs.</li>
-      <li><b>Asymmetric actor-critic.</b> The actor group holds 16 terms; the critic adds four it never sees: <code>base_lin_vel</code>, <code>base_height_error</code>, <code>ee_body_twist_full</code> (the noise-free twist), and <code>gait_avg_velocity_state</code> (the gait-cycle accumulator). Observation noise is applied to the actor group only.</li>
-      <li><b>No history stacking.</b> Both groups use <code>history_length = 1</code>; observations are clipped to \(\pm 100\).</li>
-    </ul>
-    <p class="small">
-      Under the approximately second-order GAC closed-loop dynamics, \(V^{E}_{RE}\) and \(g_{DE}\)
-      together form an approximately Markovian representation of the task-space tracking state,
-      which is why exposing them &mdash; rather than only the resulting joint target &mdash; is
-      well-motivated.
-    </p>
-  </div>
-
-  <!-- ================= 5 ================= -->
-  <div class="section" id="frames">
-    <h2>5. Manipulation reference frame selection</h2>
-    <p>The heading frame retains pelvis position and yaw while removing roll and pitch:</p>
-    <div class="eq">
-      $$ p_{WH} = p_{WP}, \qquad R_{WH} = R_z(\psi) $$
-    </div>
-    <p>The ground-attached heading frame additionally removes vertical heave:</p>
-    <div class="eq">
-      $$ p_{WH_0} = \left[p_{WP,x},\; p_{WP,y},\; 0\right]^{\top}, \qquad R_{WH_0} = R_z(\psi) $$
-    </div>
-    <p>
-      \(\{H_0\}\) retains the planar \((x, y, \psi)\) motion that locomotion needs while removing
-      the kinematic transmission of pelvis roll, pitch, and heave through the reference frame.
-      Physical disturbances transmitted through whole-body dynamics remain, and are compensated by
-      the controller.
-    </p>
-    <p>The frame Jacobians are constructed from the pelvis Jacobian. With \(f = R_{WP}e_x\) and \(\psi = \tan^{-1}(f_y, f_x)\), the heading rate is</p>
-    <div class="eq">
-      $$ \dot\psi = \left[-\tfrac{f_z f_x}{f_x^2 + f_y^2},\; -\tfrac{f_y f_z}{f_x^2 + f_y^2},\; 1\right]\omega^{C_P}_{WP}
-         \;\triangleq\; a^{\top}\omega^{C_P}_{WP}, \qquad J_\psi = a^{\top} J^{C_P}_{\omega,WP} $$
-    </div>
-    <div class="eq">
-      $$ J^{C_R}_{WH} = \begin{bmatrix} J^{C_P}_{v,WP} \\ e_z J_\psi \end{bmatrix},
-         \qquad
-         J^{C_R}_{WH_0} = \begin{bmatrix} P_{xy} J^{C_P}_{v,WP} \\ e_z J_\psi \end{bmatrix},
-         \qquad P_{xy} = \mathrm{diag}(1,1,0) $$
-    </div>
-    <p class="small">
-      Since pelvis angular velocity is directly available from the IMU while linear velocity is not
-      reliably measured at deployment, <b>only the measured angular-velocity components of the
-      floating base are used</b> in the reference-frame velocity provided to the actor.
-    </p>
-  </div>
-
-  <!-- ================= 6 ================= -->
-  <div class="section" id="rewards">
-    <h2>6. Reward specification</h2>
-    <p>
-      The reward decomposes as \(r_t = r^{\text{manip}}_t + r^{\text{loco}}_t + r^{\text{reg}}_t = \sum_i w_i r_{i,t}\).
-      Final-stage weights are in the <a href="index.html">Table I panel on the project page</a>;
-      the definitions follow.
-    </p>
-
-    <h3>6.1 End-effector position: combined \(L_2^2 + L_1\)</h3>
-    <div class="eq">
-      $$ r_{\text{pos},t} = \exp\left(-\frac{e_{2,t}}{\sigma_2} - \frac{e_{1,t}}{\sqrt{3}\,\sigma_1}\right) $$
-      $$ e_{2,t} = \mathrm{mean}_{i \in \{l,r\}} \lVert p_{DE,i,t}\rVert_2^2,
-         \qquad e_{1,t} = \mathrm{mean}_{i \in \{l,r\}} \lVert p_{DE,i,t}\rVert_1 $$
-    </div>
-    <p class="small">
-      The squared term dominates while the error is large; the \(L_1\) term keeps a usable gradient
-      once it is small, which is what drives the final approach to millimetre accuracy. Final
-      stage: \(\sigma_2 = 0.001\), \(\sigma_1 = 0.01\).
-    </p>
-
-    <h3>6.2 End-effector orientation: intrinsic \(SO(3)\) trace error</h3>
-    <div class="eq">
-      $$ r_{\text{rot},t} = \exp\left(-\frac{\mathrm{mean}_{i \in \{l,r\}}\left(3 - \mathrm{tr}(R_{DE,i,t})\right)}{\sigma_R}\right) $$
-    </div>
-
-    <h3>6.3 Residual and smoothness regularization</h3>
-    <div class="eq">
-      $$ r_{\text{res},t} = \lVert a_{\text{RL,arm},t}\rVert_2^2 $$
-      $$ r_{\Delta a,t} = \lVert a_t - a_{t-1}\rVert_2^2,
-         \qquad r_{\Delta^2\mu,t} = \lVert \mu_t - 2\mu_{t-1} + \mu_{t-2}\rVert_2^2 $$
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Term</th><th>\(w\)</th><th>Mask</th><th>Penalized quantity</th></tr></thead>
+        <tbody>
+          <tr><td><code>penalty_straight_walk_yaw_leakage_gait_avg</code></td><td class="num">&minus;10</td>
+              <td>\(\lVert c_{xy}\rVert > 0.05 \wedge \lvert\omega_z^{\text{cmd}}\rvert < 0.03\)</td>
+              <td>\(\bar\omega_z^2 + 0.15\,\omega_z^2\)</td></tr>
+          <tr><td><code>penalty_lateral_velocity_gait_avg</code></td><td class="num">&minus;2</td>
+              <td>\(\lVert c_{xy}\rVert > 0.03\)</td>
+              <td>\(\bar v_\perp^2 + 0.15\,v_\perp^2\), \(v_\perp = \hat c_x v_y - \hat c_y v_x\) (signed)</td></tr>
+          <tr><td><code>penalty_turn_in_place_leakage</code></td><td class="num">&minus;2.5</td>
+              <td>\(\lVert c_{xy}\rVert < 0.03 \wedge \lvert\omega_z^{\text{cmd}}\rvert > 0.1\)</td>
+              <td>\(\lVert v_{xy}\rVert^2\)</td></tr>
+          <tr><td><code>penalty_standing_ang_vel</code></td><td class="num">&minus;2.5</td>
+              <td>\(\lVert c_{xy}\rVert < 0.03 \wedge \lvert\omega_z^{\text{cmd}}\rvert < 0.03\)</td>
+              <td>\(\omega_z^2\)</td></tr>
+          <tr><td><code>penalty_straight_walk_yaw_leakage</code></td><td class="num">0</td>
+              <td>as the gait-averaged variant</td>
+              <td>\(\omega_z^2\) &mdash; <b>zeroed</b>; replaced by the averaged form</td></tr>
+          <tr><td><code>penalty_lateral_velocity</code></td><td class="num">0</td>
+              <td>\(\lVert c_{xy}\rVert > 0.03\)</td>
+              <td>\(\lVert v_{xy} - (v_{xy}\!\cdot\!\hat c)\hat c\rVert^2\) &mdash; <b>zeroed</b>. Note this is the vector rejection, whereas the averaged variant uses the signed scalar \(v_\perp\).</td></tr>
+          <tr><td><code>penalty_heading_hold</code></td><td class="num">0</td>
+              <td>latched straight-walk regime</td>
+              <td>Accumulated yaw drift from a heading latched at the start of the straight-walk segment. Registered but never enabled.</td></tr>
+        </tbody>
+      </table>
     </div>
     <p class="small">
-      The residual penalty keeps the learned correction a <em>bounded</em> correction rather than a
-      replacement. The acceleration penalty acts on the policy <b>mean</b> action
-      \(\mu_t = \mu_\theta(o_t)\), not the sampled action &mdash; penalizing the sampled action's
-      second difference would mostly penalize exploration noise.
-    </p>
-
-    <h3>6.4 Locomotion and gait</h3>
-    <p>
-      A periodic gait state \(\phi_t\) follows phase-based bipedal locomotion, with left and right
-      leg phases offset by \(\pi\). The desired swing-foot height is generated from \(\phi_t\) using
-      a symmetric cubic-B&eacute;zier trajectory with a peak height of 0.09&nbsp;m; its tracking error
-      enters \(r^{\text{loco}}_t\).
-    </p>
-
-    <h3>6.5 Gait-cycle averaging for leakage penalties</h3>
-    <p>For a signal \(e_t\) over a complete gait cycle \(\mathcal{G}_k\):</p>
-    <div class="eq">
-      $$ \bar e_k = \frac{1}{|\mathcal{G}_k|}\sum_{t \in \mathcal{G}_k} e_t $$
-    </div>
-    <p>
-      The gait-averaged yaw rate and command-perpendicular velocity are penalized for heading and
-      lateral leakage respectively. Averaging over the cycle <b>avoids penalizing the periodic
-      motion intrinsic to locomotion</b> &mdash; an instantaneous penalty on lateral velocity
-      punishes the side-to-side weight shift that walking requires, whereas the cycle mean isolates
+      <b>Gait-cycle averaging.</b> \(\bar\cdot\) is the running mean over the current gait cycle,
+      maintained by a command-manager term. It accumulates only while the gait phase advances
+      (standing contributes nothing), flushes when the left-leg phase crosses zero upward, and
+      falls back to the previous cycle's mean during the first 5 samples of a new cycle. The
+      \(0.15\times\) instantaneous companion keeps a dense per-step gradient while the mean targets
       net drift.
     </p>
+
+    <h3>1.6 Impact handling (2 active, 1 inactive)</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Term</th><th>\(w\)</th><th>Definition</th></tr></thead>
+        <tbody>
+          <tr><td><code>penalty_foot_contact_force</code></td><td class="num">&minus;2</td>
+              <td>\(\sum_i \left(\dfrac{(F^{\text{peak}}_{z,i} - F_{\text{th}})_+}{F_{\text{th}}}\right)^2\), \(F_{\text{th}} = 400\) N.
+                  \(F^{\text{peak}}_z\) is the maximum over <b>all physics substeps</b> in the control interval, read from a contact-force history buffer, not the value sampled at the control tick. The term raises an error if the buffer is shorter than the decimation, so a hard strike cannot be missed.</td></tr>
+          <tr><td><code>penalty_foot_pretouchdown_velocity</code></td><td class="num">&minus;2</td>
+              <td>\(\sum_i \mathbb{1}[\text{active}_i]\,\left((-\dot z_i) - 0.15\right)_+^2\).
+                  \(\text{active}_i\) requires all three: airborne (\(F_z < 5\) N), near ground (height \(< 0.05\) m), and a non-trivial velocity command (\(> 0.03\) m/s). Mid-swing descent is unpenalized.</td></tr>
+          <tr><td><code>penalty_foot_touchdown_shock</code></td><td class="num">0</td>
+              <td>One-shot on the contact rising edge: \(\sum_i \mathbb{1}[\text{touchdown}_i]\left((-\dot z_i) - 0.25\right)_+^2\). Registered but disabled &mdash; the two terms above cover impact from the force and the approach side respectively.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="small">
+      <b>Swing reference \(z^{*}\).</b> The <code>feet_phase</code> target is a two-piece cubic
+      B&eacute;zier over the normalized phase \(x = (\phi + \pi)/2\pi\), with
+      \(b(x) = x^3 + 3x^2(1-x)\): rising \(0 \to h\) via \(b(2x)\) for \(x \le 0.5\), falling
+      \(h \to 0\) via \(b(2x-1)\) after, with \(h = 0.09\) m. The profile is
+      \(C^1\) at the peak and flat at both ends, so the commanded vertical velocity is zero at
+      liftoff and touchdown.
+    </p>
+
+    <p class="small">
+      <b>Count.</b> 2 manipulation + 6 locomotion + 8 action/posture + 5 limits/feet/survival +
+      7 command-gated + 3 impact = <b>31 registered terms</b>, of which 27 carry non-zero weight in
+      the reported configuration.
+    </p>
   </div>
 
-  <!-- ================= 7 ================= -->
-  <div class="section" id="curriculum">
-    <h2>7. Curriculum</h2>
-    <p>
-      Six stages, with tracking kernels, command range, joint initialization, and selected reward
-      weights varied progressively. Policy and optimizer checkpoints transfer sequentially.
+  <!-- ==================== 2. OBSERVATIONS ==================== -->
+  <div class="section" id="obs">
+    <h2>2. Observation specification and pre-processing</h2>
+
+    <h3>2.1 The pipeline, in order</h3>
+    <p>Each term is computed in physical units, then passed through four stages:</p>
+    <div class="eq">
+      $$ o \;=\; \operatorname{clip}\Big(\; \alpha_{\text{term}} \cdot \big( f_{\text{term}}(\text{state}) + \eta \big) ,\; \pm 100 \Big),
+         \qquad \eta \sim \mathcal{U}(-n_{\text{term}},\, +n_{\text{term}}) $$
+    </div>
+    <ol class="bullets">
+      <li><b>Noise, then scale &mdash; in that order.</b> The noise magnitudes below are therefore in <em>physical units</em>, applied before the scale factor. <code>dof_vel</code> with noise 0.05 and scale 0.05 means &plusmn;0.05 rad/s of sensor noise, contributing &plusmn;0.0025 to the network input &mdash; not &plusmn;0.05.</li>
+      <li><b>Uniform, not Gaussian.</b> \(\eta \sim \mathcal{U}(-n, +n)\), resampled every step per element.</li>
+      <li><b>Noise is applied to the actor group only.</b> The critic group sets <code>enable_noise = False</code>, so it sees clean values even for terms whose config lists a noise level.</li>
+      <li><b>Global clip at \(\pm 100\)</b> after concatenation, then a running mean/variance normalizer inside the agent (<code>obs_normalization</code>).</li>
+      <li><b>No history stacking.</b> Both groups use <code>history_length = 1</code>; temporal information enters only through the two explicit previous-action terms and the gait phase.</li>
+    </ol>
+
+    <h3>2.2 Actor observations (16 terms)</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Term</th><th>Dim</th><th>Scale</th><th>Noise</th><th>Definition</th></tr></thead>
+        <tbody>
+          <tr><td><code>arm_command</code></td><td class="num">18</td><td class="num">1.0</td><td class="num">0</td>
+              <td>Target pose per arm: 3 position + 6D rotation, in the manipulation frame.</td></tr>
+          <tr><td><code>ee_error_pose</code></td><td class="num">18</td><td class="num">1.0</td><td class="num">0</td>
+              <td>Per arm: \(R^{*\top}(p - p^{*})\) and the 6D form of \(R^{*\top}R\). <b>The position error is rotated into the target frame</b>, so the error is expressed in the frame the command defines rather than the robot's.</td></tr>
+          <tr><td><code>ee_error_pose_tanh</code></td><td class="num">6</td><td class="num">1.0</td><td class="num">0</td>
+              <td>\(\tanh(p_{DE}/\tau)\) per component, \(\tau = 0.01\) &mdash; equivalently \(\tanh(100\,p_{DE})\). Saturates beyond ~2 cm, so it is a high-gain channel for the last millimetres. Position only; no rotation counterpart.</td></tr>
+          <tr><td><code>command_lin_vel</code></td><td class="num">2</td><td class="num">1.0</td><td class="num">0</td><td>\(c_{xy}\).</td></tr>
+          <tr><td><code>command_ang_vel</code></td><td class="num">1</td><td class="num">1.0</td><td class="num">0</td><td>\(\omega_z^{\text{cmd}}\).</td></tr>
+          <tr><td><code>projected_gravity</code></td><td class="num">3</td><td class="num">1.0</td><td class="num">0.001</td><td>\(R_{WP}^{\top}(0,0,-1)^{\top}\).</td></tr>
+          <tr><td><code>base_ang_vel</code></td><td class="num">3</td><td class="num">0.25</td><td class="num">0.01</td><td>Root angular velocity in the base frame. Available from the IMU at deployment.</td></tr>
+          <tr><td><code>dof_pos_relative</code></td><td class="num">29</td><td class="num">1.0</td><td class="num">0.01</td><td>\(q - q^{\text{def}}\).</td></tr>
+          <tr><td><code>dof_vel</code></td><td class="num">29</td><td class="num">0.05</td><td class="num">0.05</td><td>Measured joint velocity. The largest noise level in the group, matching how poorly this signal is estimated on hardware.</td></tr>
+          <tr><td><code>last_action</code></td><td class="num">26</td><td class="num">1.0</td><td class="num">0</td>
+              <td><b>Not the raw action.</b> Resolves to <code>last_residual_policy_action</code>: leg targets concatenated with the <em>post-scale</em> arm residual buffer.</td></tr>
+          <tr><td><code>prev_prev_action</code></td><td class="num">29</td><td class="num">1.0</td><td class="num">0</td><td>Raw action two steps back, needed by the mean-action acceleration penalty.</td></tr>
+          <tr><td><code>controller_arm_joint_command</code></td><td class="num">14</td><td class="num">1.0</td><td class="num">0</td>
+              <td>\(a_{\text{GAC}}\), the nominal command the residual is correcting. Cached, not recomputed.</td></tr>
+          <tr><td><code>ee_body_twist</code></td><td class="num">12</td><td class="num">0.05</td><td class="num">0.02</td>
+              <td>Controller-side \(V^{E}_{RE}\) for both arms &mdash; the actor's copy, built with base linear velocity omitted because it is not measurable at deployment.</td></tr>
+          <tr><td><code>sin_phase</code>, <code>cos_phase</code></td><td class="num">2 + 2</td><td class="num">1.0</td><td class="num">0</td><td>\(\sin\phi\), \(\cos\phi\) per leg.</td></tr>
+          <tr><td><code>base_height_command</code></td><td class="num">1</td><td class="num">1.0</td><td class="num">0</td><td>Commanded pelvis height.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>2.3 Critic-only additions (4 terms)</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Term</th><th>Dim</th><th>Scale</th><th>Why the actor cannot have it</th></tr></thead>
+        <tbody>
+          <tr><td><code>base_lin_vel</code></td><td class="num">3</td><td class="num">1.0</td><td>Root linear velocity in the base frame. Not reliably estimated on the robot.</td></tr>
+          <tr><td><code>base_height_error</code></td><td class="num">1</td><td class="num">1.0</td><td>\(z_P - z^{*}_P\). Requires absolute pelvis height, which needs external tracking.</td></tr>
+          <tr><td><code>ee_body_twist_full</code></td><td class="num">12</td><td class="num">0.05</td><td>The ground-truth twist including base linear velocity, versus the actor's truncated copy.</td></tr>
+          <tr><td><code>gait_avg_velocity_state</code></td><td class="num">5</td><td class="num">1.0</td><td>\(\bar\omega_z\), \(\bar v_\perp\), both previous-cycle means, and the in-cycle sample count divided by 50. Exposes the accumulator that the gait-averaged penalties score, so the critic can attribute credit for a term whose value depends on history the actor does not see.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="small">
+      The critic group otherwise mirrors the actor's terms, with <code>dof_vel</code> noise listed
+      as 0.02 rather than 0.05 &mdash; inert, since noise is disabled for that group.
     </p>
+  </div>
+
+  <!-- ==================== 3. ACTION ==================== -->
+  <div class="section" id="action">
+    <h2>3. Action scaling</h2>
+    <p>
+      Both the controller and the policy emit <em>normalized</em> joint-position actions. The
+      low-level layer converts them with a per-DOF action scale \(\alpha\):
+    </p>
+    <div class="eq">
+      $$ q^{\text{target}} \;=\; q^{\text{default}} \;+\; \alpha \left( a_{\text{GAC}} + s\,\operatorname{clip}(a_{\text{RL,arm}}, \pm c) \right),
+         \qquad \alpha = 0.25,\; s = 3.0,\; c = 1.0 $$
+    </div>
+    <p>
+      so the effective joint-space residual scale is \(s_r = s\,\alpha = 0.75\) and the correction
+      is bounded by \(\pm 0.75\) rad per arm joint. Leg channels use the same \(\alpha = 0.25\)
+      with no pre-scale. This decomposition matters when reading a configuration file: the
+      pre-scale of 3.0 and the action scale of 0.25 live in different places, and the pre-scale
+      alone overstates the policy's authority by 4&times;.
+    </p>
+  </div>
+
+  <!-- ==================== 4. CURRICULUM EXTRAS ==================== -->
+  <div class="section" id="curriculum">
+    <h2>4. Curriculum details not in Table&nbsp;II</h2>
+
+    <h3>4.1 In-stage annealing</h3>
+    <p>
+      The arrows in Table&nbsp;II are linear ramps <em>within</em> stage D, not steps between
+      stages, held constant outside the ramp window. Annealing inside the stage avoids a
+      discontinuous reward-scale jump, which matters for an off-policy replay buffer still holding
+      transitions scored under the old kernel.
+    </p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Term</th><th>Field</th><th>Start &rarr; End</th><th>Ramp window</th></tr></thead>
+        <tbody>
+          <tr><td><code>tracking_ee_pos</code></td><td>tracking_sigma</td><td class="num">0.005 &rarr; 0.001</td><td class="num">20% &ndash; 70%</td></tr>
+          <tr><td><code>tracking_ee_rot</code></td><td>tracking_sigma</td><td class="num">0.10 &rarr; 0.02</td><td class="num">20% &ndash; 70%</td></tr>
+          <tr><td><code>tracking_lin_vel</code></td><td>tracking_sigma</td><td class="num">0.25 &rarr; 0.10</td><td class="num">20% &ndash; 80%</td></tr>
+          <tr><td><code>penalty_arm_residual_l2</code></td><td>weight</td><td class="num">&minus;0.10 &rarr; &minus;0.05</td><td class="num">0% &ndash; 50%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="small">\(\sigma_v\) is the linear kernel; the angular kernel holds at 0.25 throughout and does not anneal.</p>
+
+    <h3>4.2 Early stopping in stages A&ndash;C</h3>
+    <p>
+      The \(\le\) on the first three iteration budgets is an early-stop criterion: mean episode
+      length \(\ge 990\) of 1000 steps, sustained for <em>patience</em> consecutive evaluations
+      after a minimum iteration count. Stage A: patience 1000, min 5k. Stage B: 2000, 5k.
+      Stage C: 2000, 10k. Later stages run their full budget.
+    </p>
+    <p class="small">
+      The reported run consumed <b>201,911</b> iterations against a nominal budget of 210,000, so
+      early stopping recovered about 8k iterations across the three standing and slow-walking
+      stages.
+    </p>
+
+    <h3>4.3 Per-stage randomization not in Table&nbsp;II</h3>
     <div class="tablewrap">
       <table>
         <thead><tr><th></th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th><th>F</th></tr></thead>
         <tbody>
-          <tr><td>Task</td><td>Stand Fixed</td><td>Stand Traj.</td><td>Walk Fixed</td><td>Walk Traj.</td><td>Walk Traj.</td><td>Walk Traj.</td></tr>
-          <tr><td>Iterations</td><td class="num">&le; 10k</td><td class="num">&le; 10k</td><td class="num">&le; 20k</td><td class="num">50k</td><td class="num">60k</td><td class="num">60k</td></tr>
-          <tr><td>Cmd. range \((v_x,v_y,\omega_z)\)</td><td class="num">0</td><td class="num">0</td><td class="num">.3/.3/.5</td><td class="num">.7/.7/.7</td><td class="num">.7/.7/.7</td><td class="num">.7/.7/.7</td></tr>
-          <tr><td>\(\sigma_P\)</td><td class="num">.02</td><td class="num">.01</td><td class="num">.02</td><td class="num">.005&rarr;.001</td><td class="num">.001/.01</td><td class="num">.001/.01</td></tr>
-          <tr><td>\(\sigma_R\)</td><td class="num">.20</td><td class="num">.10</td><td class="num">.10</td><td class="num">.10&rarr;.02</td><td class="num">.02</td><td class="num">.02</td></tr>
-          <tr><td>\(\sigma_v\)</td><td class="num">.25</td><td class="num">.25</td><td class="num">.25</td><td class="num">.25&rarr;.10</td><td class="num">.10</td><td class="num">.10</td></tr>
-          <tr><td>Height cmd. range [m]</td><td class="num">0.73</td><td class="num">[.68, .78]</td><td class="num">[.68, .78]</td><td class="num">[.55, .80]</td><td class="num">[.55, .80]</td><td class="num">[.55, .80]</td></tr>
-          <tr><td>Early stop</td><td class="num">990 / p1000 / m5k</td><td class="num">990 / p2000 / m5k</td><td class="num">990 / p2000 / m10k</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">&mdash;</td></tr>
-          <tr><td>Init. \(q\) scale</td><td class="num">[.9, 1.1]</td><td class="num">[.85, 1.15]</td><td class="num">[.85, 1.15]</td><td class="num">[.7, 1.3]</td><td class="num">[.7, 1.3]</td><td class="num">[.7, 1.3]</td></tr>
-          <tr><td>\(w_{\text{rot}}\)</td><td class="num">2.5</td><td class="num">2.5</td><td class="num">2.5</td><td class="num">2.5</td><td class="num">3.0</td><td class="num">3.0</td></tr>
-          <tr><td>\(w_{\text{res}}\)</td><td class="num">&minus;.10</td><td class="num">&minus;.10</td><td class="num">&minus;.10</td><td class="num">&minus;.10&rarr;&minus;.05</td><td class="num">&minus;.05</td><td class="num">&minus;.05</td></tr>
-          <tr><td>\(w_{\text{pose}}\)</td><td class="num">&minus;.5</td><td class="num">&minus;.5</td><td class="num">&minus;.5</td><td class="num">&minus;1.0</td><td class="num">&minus;1.0</td><td class="num">&minus;1.0</td></tr>
-          <tr><td>\(w_{\dot q,\text{arm}}\)</td><td class="num">&minus;.0125</td><td class="num">&minus;.0125</td><td class="num">&minus;.0125</td><td class="num">&minus;.02</td><td class="num">&minus;.05</td><td class="num">&minus;.05</td></tr>
-          <tr><td>\(w_{\text{twist}}\)</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">&minus;.02</td><td class="num">&minus;.05</td><td class="num">&minus;.05</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p>
-      <b>A</b> establishes coordination between nominal GAC and residual RL with fixed targets while
-      standing, avoiding competing control actions. <b>B</b> adds moderate-range trajectory tracking
-      while standing; <b>C</b> adds slow locomotion with fixed manipulation targets. <b>D</b>
-      combines the two under broader locomotion commands and full-arm-range trajectories with wider
-      initialization. <b>E</b> tightens the tracking objective, including the combined
-      \(L_2^2 + L_1\) position reward. <b>F</b> expands the command distribution with task-space
-      demonstrations such as teleoperation and mime-man trajectories, which can also be sampled from
-      the required range in \(SE(3)\) task space.
-    </p>
-    <h3>7.1 In-stage annealing</h3>
-    <p>
-      Kernel widths are annealed <em>within</em> stage D on a linear ramp, held constant before
-      <code>ramp_start</code> and after <code>ramp_end</code>. Annealing inside the stage rather
-      than stepping between stages avoids a discontinuous reward-scale jump, which matters for an
-      off-policy replay buffer holding transitions scored under the old kernel.
-    </p>
-    <div class="tablewrap">
-      <table>
-        <thead><tr><th>Stage</th><th>Term</th><th>Field</th><th>Start &rarr; End</th><th>Ramp window</th></tr></thead>
-        <tbody>
-          <tr><td>D</td><td><code>tracking_ee_pos</code></td><td>tracking_sigma</td><td class="num">0.005 &rarr; 0.001</td><td class="num">20% &ndash; 70%</td></tr>
-          <tr><td>D</td><td><code>tracking_ee_rot</code></td><td>tracking_sigma</td><td class="num">0.10 &rarr; 0.02</td><td class="num">20% &ndash; 70%</td></tr>
-          <tr><td>D</td><td><code>tracking_lin_vel</code></td><td>tracking_sigma</td><td class="num">0.25 &rarr; 0.10</td><td class="num">20% &ndash; 80%</td></tr>
-          <tr><td>D</td><td><code>penalty_arm_residual_l2</code></td><td>weight</td><td class="num">&minus;0.10 &rarr; &minus;0.05</td><td class="num">0% &ndash; 50%</td></tr>
+          <tr><td>Commanded height [m]</td><td class="num">0.73</td><td class="num">[.68, .78]</td><td class="num">[.68, .78]</td><td class="num">[.55, .80]</td><td class="num">[.55, .80]</td><td class="num">[.55, .80]</td></tr>
+          <tr><td>Stand probability</td><td class="num">1.0</td><td class="num">1.0</td><td class="num">0.3</td><td class="num">0.2</td><td class="num">0.2</td><td class="num">0.2</td></tr>
+          <tr><td>Turn-in-place prob.</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">0.05</td><td class="num">0.05</td><td class="num">0.10</td><td class="num">0.10</td></tr>
+          <tr><td>Workspace bound weight</td><td class="num">&mdash;</td><td class="num">0.3</td><td class="num">&mdash;</td><td class="num">0.7</td><td class="num">0.7</td><td class="num">0.7</td></tr>
         </tbody>
       </table>
     </div>
     <p class="small">
-      \(\sigma_v\) refers to the <b>linear</b> velocity-tracking kernel. Angular velocity keeps a
-      fixed tolerance of 0.25 throughout, rather than being tightened alongside it: net heading
-      fidelity is enforced by the gait-averaged leakage penalty (&sect;6.5), which does not punish
-      the intra-stride yaw oscillation intrinsic to bipedal gait.
-    </p>
-
-    <p class="small">
-      <b>No retargeted whole-body human-motion data is used.</b> For stages B, D, and E, diverse arm
-      configurations are sampled and mapped through forward kinematics to feasible end-effector
-      poses, then interpolated in \(SE(3)\) with randomized motion speeds to generate full-pose
-      tracking trajectories.
+      Applied uniformly across all stages: torque-level random force injection at limit 0.10,
+      gait period 1.0 s randomized in [0.6, 1.5] s, and command resampling every 10 s.
     </p>
   </div>
 
-  <!-- ================= 8 ================= -->
-  <div class="section" id="symmetry">
-    <h2>8. Symmetry augmentation and regularization</h2>
-    <p>
-      Let \(\mathcal{M}\) denote the full reflection operator associated with the Cartesian
-      reflection \(M = \mathrm{diag}(1, -1, 1)\), which exchanges left and right joints and applies
-      the corresponding sign changes to directional quantities. For each replay transition, a
-      mirrored counterpart is constructed by applying \(\mathcal{M}\) consistently to all
-      reflection-dependent quantities: observations, actions, locomotion commands, end-effector
-      targets, and gait-phase variables.
-    </p>
-    <p>Beyond replay augmentation, the actor is regularized to be equivariant and the critic invariant:</p>
-    <div class="eq">
-      $$ \mathcal{L}^{\text{actor}}_{\text{sym}} = \left\lVert \mu_\theta(\mathcal{M} \circ o_t) - \mathcal{M} \circ \mu_\theta(o_t) \right\rVert_2^2 $$
-      $$ \mathcal{L}^{\text{critic}}_{\text{sym}} = \left\lVert Q_\theta(o_t, a_t) - Q_\theta(\mathcal{M} \circ o_t,\; \mathcal{M} \circ a_t) \right\rVert_2^2 $$
-    </div>
-    <p class="small">
-      Augmentation alone leaves the network free to satisfy symmetry only on the states it happens
-      to visit; the explicit losses make it a property of the function. Both are added to the
-      corresponding RL objectives, with coefficients <b>5.0</b> (actor) and <b>0.5</b> (critic).
-      Replay augmentation and the explicit losses are enabled together.
-    </p>
-  </div>
-
-  <!-- ================= 9 ================= -->
-  <div class="section" id="impl">
-    <h2>9. Implementation and hardware</h2>
-    <div class="tablewrap">
-      <table>
-        <thead><tr><th>Item</th><th>Value</th></tr></thead>
-        <tbody>
-          <tr><td>Robot</td><td>Unitree G1</td></tr>
-          <tr><td>Simulator</td><td>IsaacSim</td></tr>
-          <tr><td>RL algorithm</td><td>FastSAC, asymmetric actor-critic</td></tr>
-          <tr><td>Parallel environments</td><td class="num">4096</td></tr>
-          <tr><td>Training hardware</td><td class="num">1 &times; NVIDIA L40S</td></tr>
-          <tr><td>Wall-clock (six stages)</td><td class="num">~18 hours</td></tr>
-          <tr><td>Total iterations (actual / nominal)</td><td class="num">201,911 / 210,000</td></tr>
-          <tr><td>Physics rate / decimation</td><td class="num">200 Hz / 4</td></tr>
-          <tr><td>GAC and policy rate</td><td class="num">50 Hz</td></tr>
-          <tr><td>Episode length</td><td class="num">20 s = 1000 steps</td></tr>
-          <tr><td>Terrain</td><td class="num">plane, friction 1.0</td></tr>
-          <tr><td>Gait period</td><td class="num">1.0 s, randomized in [0.6, 1.5]</td></tr>
-          <tr><td>Action scale</td><td class="num">0.25</td></tr>
-          <tr><td>Low-level tracking</td><td>joint-position PD, gains from BeyondMimic</td></tr>
-          <tr><td>Deployment kinematics</td><td>pinocchio</td></tr>
-          <tr><td>Base angular velocity</td><td>from IMU; linear components omitted (not directly measured)</td></tr>
-          <tr><td>Pelvis pose (global wrapper)</td><td>OptiTrack, with marker-to-pelvis calibration</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p class="small">
-      For the static-arm-holding and world-frame tracking experiments, a global wrapper generates
-      locomotion commands from the estimated planar pelvis pose
-      \((x, y, \psi) \in SE(2)\) via a PD-like feedback law converting planar pose error into linear
-      and angular velocity commands. The wrapper determines <em>only</em> the locomotion command;
-      end-effector tracking and whole-body coordination remain handled by ManTra.
-    </p>
-  </div>
-
-  <!-- ================= 10 ================= -->
-  <div class="section" id="baselines">
-    <h2>10. Baselines and evaluation protocol</h2>
-    <div class="tablewrap">
-      <table>
-        <thead><tr><th>Baseline</th><th>What it changes</th></tr></thead>
-        <tbody>
-          <tr><td><b>E2E-RL</b></td><td>Same recipe as ManTra, nominal GAC controller removed. Isolates the value of explicit task-space feedback.</td></tr>
-          <tr><td><b>GAC+Split-RL</b></td><td>Arms controlled by GAC alone; RL controls only the remaining joints. Isolates the value of the arm residual.</td></tr>
-          <tr><td><b>SONIC-IK-WBT</b></td><td>Upper-body joint targets from inverse kinematics, tracked by the SONIC whole-body tracking model.</td></tr>
-          <tr><td><b>SONIC-Teleop</b></td><td>The original three-point SONIC teleoperation policy, head and bilateral wrist targets.</td></tr>
-          <tr><td><b>SONIC-Teleop-v1.1</b></td><td>Updated three-point SONIC teleoperation policy using a heading-frame representation.</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p>
-      All four benchmark trajectories are <b>held out from training</b>: the curriculum covers the
-      corresponding task-space ranges and motion classes but contains none of the evaluation
-      trajectories. They are evaluated while the humanoid maintains a standing posture, isolating
-      manipulator tracking precision from locomotion-induced disturbance.
-    </p>
-    <p class="small">
-      For fairness, all controllers are evaluated in the pelvis frame where supported.
-      SONIC-Teleop-v1.1 is the exception &mdash; its released policy uses a heading-frame
-      representation, so its errors are reported in its own reference frame. Errors are mean
-      &plusmn; standard deviation over temporal samples and both arms; for the nonsmooth trajectory
-      only steady-state samples after each command transition are included.
-    </p>
-  </div>
-
-  <!-- ================= 11 ================= -->
+  <!-- ==================== 5. HPARAMS ==================== -->
   <div class="section" id="hparams">
-    <h2>11. Optimizer, network, and termination settings</h2>
-    <p>Read from the configuration of the reported run.</p>
+    <h2>5. Optimizer, network, termination, simulation</h2>
 
-    <h3>11.1 FastSAC</h3>
+    <h3>5.1 FastSAC</h3>
     <div class="tablewrap">
       <table>
         <thead><tr><th>Parameter</th><th>Value</th><th>Parameter</th><th>Value</th></tr></thead>
@@ -487,46 +386,184 @@
           <tr><td>Actor LR</td><td class="num">3&times;10<sup>&minus;4</sup></td><td>Critic LR</td><td class="num">3&times;10<sup>&minus;4</sup></td></tr>
           <tr><td>Entropy LR</td><td class="num">3&times;10<sup>&minus;4</sup></td><td>\(\alpha\) init / autotune</td><td class="num">0.001 / on</td></tr>
           <tr><td>Critic ensemble</td><td class="num">2</td><td>Distributional atoms</td><td class="num">101</td></tr>
-          <tr><td>Value support \([v_{\min}, v_{\max}]\)</td><td class="num">[&minus;20, 20]</td><td>Weight decay</td><td class="num">0.001</td></tr>
+          <tr><td>Value support</td><td class="num">[&minus;20, 20]</td><td>Weight decay</td><td class="num">0.001</td></tr>
           <tr><td>Actor hidden dim</td><td class="num">512</td><td>Critic hidden dim</td><td class="num">768</td></tr>
           <tr><td>\(\log\sigma\) range</td><td class="num">[&minus;5, 0]</td><td>Grad-norm clip</td><td class="num">disabled</td></tr>
           <tr><td>Layer norm</td><td class="num">on</td><td>Observation normalization</td><td class="num">on</td></tr>
           <tr><td>Symmetry coef. (actor)</td><td class="num">5.0</td><td>Symmetry coef. (critic)</td><td class="num">0.5</td></tr>
           <tr><td>Mixed precision</td><td class="num">bf16</td><td><code>torch.compile</code></td><td class="num">on</td></tr>
+          <tr><td>Parallel environments</td><td class="num">4096</td><td>Learning starts</td><td class="num">10</td></tr>
         </tbody>
       </table>
     </div>
     <p class="small">
-      The buffer holds 1024 transitions per environment, so at 4096 environments the replay
-      capacity is ~4.2M transitions. Symmetry augmentation doubles each sampled batch before the
-      update.
+      Replay capacity is 1024 transitions per environment, so ~4.2M at 4096 environments. Symmetry
+      augmentation doubles each sampled batch before the update, so the effective batch is 16384.
     </p>
 
-    <h3>11.2 Termination</h3>
+    <h3>5.2 Termination</h3>
     <div class="tablewrap">
       <table>
         <thead><tr><th>Condition</th><th>Threshold</th></tr></thead>
         <tbody>
           <tr><td>Base height</td><td class="num">&lt; 0.35 m</td></tr>
-          <tr><td>Base orientation (projected gravity \(x, y\))</td><td class="num">&gt; 0.85</td></tr>
+          <tr><td>Base orientation (projected gravity \(x\) or \(y\))</td><td class="num">&gt; 0.85</td></tr>
           <tr><td>Joint position limits</td><td class="num">at 100% of range</td></tr>
-          <tr><td>Timeout</td><td class="num">1000 steps (not a failure)</td></tr>
+          <tr><td>Timeout</td><td class="num">1000 steps &mdash; not scored as failure</td></tr>
         </tbody>
       </table>
     </div>
 
-    <h3>11.3 Simulation</h3>
+    <h3>5.3 Simulation</h3>
     <p class="small">
-      IsaacSim / PhysX, TGS solver, 8 position and 4 velocity iterations, 1 substep,
-      contact-force history length 4 (so the peak-force penalty in &sect;6 sees every substep),
-      environment spacing 20 m, plane terrain with static and dynamic friction 1.0.
+      Physics at 200 Hz with control decimation 4, giving the 50 Hz control rate; 1 substep;
+      PhysX with 8 position and 4 velocity solver iterations; contact-force history length 4, which
+      is what lets the peak-force penalty see every substep of a control interval; plane terrain
+      with static and dynamic friction 1.0; environment spacing 20 m; episode length 20 s.
+    </p>
+  </div>
+
+  <!-- ==================== 6. BASELINE ==================== -->
+  <div class="section" id="baseline">
+    <h2>6. E2E-RL baseline &mdash; exactly what differs</h2>
+    <p>
+      E2E-RL is the same recipe with the nominal controller removed. Because the comparison is the
+      paper's main architectural claim, the complete difference is listed here rather than
+      summarized. <b>The FastSAC configuration is byte-identical between the two</b> &mdash; every
+      field in the algorithm config matches, so the comparison is not confounded by optimizer
+      tuning.
     </p>
 
-    <h3>11.4 Still undocumented</h3>
+    <h3>6.1 Action space</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th></th><th>ManTra</th><th>E2E-RL</th></tr></thead>
+        <tbody>
+          <tr><td>Arm action</td><td>residual on \(a_{\text{GAC}}\)</td><td>direct joint target</td></tr>
+          <tr><td>Arm pre-scale</td><td class="num">3.0</td><td class="num">7.0</td></tr>
+          <tr><td>Arm clip</td><td class="num">1.0</td><td class="num">1.0</td></tr>
+          <tr><td>Action scale \(\alpha\)</td><td class="num">0.25</td><td class="num">0.25</td></tr>
+          <tr><td><b>Effective arm range</b></td><td class="num">&plusmn;0.75 rad about \(a_{\text{GAC}}\)</td><td class="num">&plusmn;1.75 rad about \(q^{\text{def}}\)</td></tr>
+          <tr><td>Leg action</td><td class="num">direct, \(\alpha = 0.25\)</td><td class="num">direct, \(\alpha = 0.25\)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="small">
+      The baseline needs 2.3&times; the arm authority because its action <em>is</em> the arm pose,
+      not a correction to one. Giving it the residual's &plusmn;0.75 rad would confine it to a
+      neighbourhood of the default pose and make the comparison meaningless.
+    </p>
+
+    <h3>6.2 Reward</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Term</th><th>ManTra</th><th>E2E-RL</th></tr></thead>
+        <tbody>
+          <tr><td><code>penalty_arm_residual_l2</code> function</td><td><code>..._l2</code></td><td><code>..._l2_weighted</code></td></tr>
+          <tr><td>&nbsp;&nbsp;config weight</td><td class="num">&minus;0.05</td><td class="num">&minus;0.01</td></tr>
+          <tr><td>&nbsp;&nbsp;launch-script override</td><td class="num">none</td><td class="num">&minus;0.5, all stages</td></tr>
+          <tr><td>&nbsp;&nbsp;per-DOF weights</td><td class="num">uniform</td><td class="num">shoulders/elbow 1.0, wrists 0.5</td></tr>
+          <tr><td>\(L_1\) sigma in stages E&ndash;F</td><td class="num">0.01</td><td class="num">0 &mdash; \(L_1\) term disabled, pure \(L_2^2\)</td></tr>
+          <tr><td>Pre-touchdown velocity</td><td class="num">&minus;2</td><td class="num">not enabled</td></tr>
+          <tr><td>Symmetry coef. (critic)</td><td class="num">0.5</td><td class="num">1.0</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="small">
+      All 31 terms are registered in both; only the ones above differ. The residual penalty means
+      different things in the two: for ManTra it penalizes the correction on top of the controller,
+      for E2E-RL it penalizes the arm action itself, which is why the override is 10&times; larger
+      and the wrists are loosened.
+    </p>
+
+    <h3>6.3 Observations</h3>
+    <p>
+      The baseline's actor and critic each lose two terms, both of which only exist because a
+      controller does: <code>controller_arm_joint_command</code> (14) and <code>ee_body_twist</code>
+      / <code>ee_body_twist_full</code> (12). Actor: 16 terms &rarr; 14. Everything else &mdash;
+      scales, noise levels, clipping, normalization &mdash; is identical.
+    </p>
+    <p class="small">
+      The baseline also runs a separate pipeline module, and does not receive the controller
+      damping-ratio or angular-velocity-sigma flags, neither of which has meaning without a
+      controller. Stage structure, iteration counts, trajectory datasets, and seeds are the same.
+    </p>
+  </div>
+
+  <!-- ==================== 7. WHY ==================== -->
+  <div class="section" id="why">
+    <h2>7. Why these values</h2>
+
+    <h3>Reward magnitudes</h3>
+    <p>
+      The weights fall into three bands, and the band matters more than the exact number.
+      <b>Tracking terms</b> sit at 1&ndash;5 and are bounded in \([0, 1]\) by construction, so
+      their weights are directly comparable: end-effector position at 4.0 and orientation at 3.0
+      dominate the locomotion terms at 2.0 and 1.5, which is the task priority stated explicitly.
+      <b>Shaping penalties</b> sit at 0.05&ndash;2.5 and are unbounded above, so they are kept small
+      enough that the exponential terms remain the dominant gradient in normal operation.
+      <b>Constraint-like penalties</b> sit at 5&ndash;10 (foot proximity, foot orientation, heading
+      leakage) or 200 (termination): these are meant to be prohibitive rather than traded off.
+      Termination at &minus;200 against an alive bonus of +10 makes a fall cost roughly 20 steps of
+      survival, so early falling is never locally profitable.
+    </p>
+    <p>
+      The alive bonus is 10.0 rather than the 2.5 used elsewhere in the codebase specifically
+      because FastSAC is off-policy: a dense constant signal keeps early value estimates
+      well-scaled while the tracking terms are still near zero.
+    </p>
+
+    <h3>Kernel widths</h3>
+    <p>
+      Every tracking term is \(\exp(-e/\sigma)\), so \(\sigma\) sets the error at which the reward
+      falls to \(1/e\) &mdash; it is a <em>tolerance</em>, not a gain. The curriculum tightens
+      \(\sigma_P\) from 0.02 to 0.001 (\(\sqrt{0.001} \approx 3\) cm to \(\approx 3\) mm of
+      characteristic error) only once the policy can already walk and reach, because a tight kernel
+      early gives a reward that is flat at zero across the whole reachable set and therefore carries
+      no gradient. The combined \(L_2^2 + L_1\) form exists for the same reason at the other end:
+      once \(e_2\) is at the millimetre scale it contributes almost nothing to the exponent, while
+      \(e_1\) still varies linearly and keeps the final approach learnable.
+    </p>
+
+    <h3>Masks and gait averaging</h3>
+    <p>
+      The command-gated penalties are masked rather than weighted because the behaviours they
+      police are only errors under some commands: lateral velocity is a fault when walking straight
+      and the intended behaviour when strafing. Gait-cycle averaging exists because the
+      instantaneous quantities are non-zero by necessity &mdash; a walking biped yaws and sways
+      within every stride &mdash; so penalizing them directly trades gait quality for command
+      fidelity. Averaging over a completed cycle isolates net drift, and the 0.15&times;
+      instantaneous companion is kept only to preserve a dense per-step gradient.
+    </p>
+
+    <h3>Observation scaling and noise</h3>
+    <p>
+      Scales bring each channel to roughly unit range before normalization: joint velocities and
+      end-effector twists at 0.05, base angular velocity at 0.25, and everything already
+      \(O(1)\) &mdash; commands, gravity, phases, pose errors &mdash; at 1.0. Noise levels are set
+      by how well each signal is known on hardware rather than uniformly: 0.001 on projected
+      gravity, 0.01 on joint positions and base angular velocity, 0.05 on joint velocities, which
+      is the noisiest estimate on the robot and the one most likely to cause a sim-to-real gap. The
+      saturated position channel exists because raw millimetre errors are \(10^{-3}\) next to
+      \(O(1)\) inputs and would be lost in normalization; \(\tanh(100\,p)\) puts them on the same
+      footing without letting large errors dominate.
+    </p>
+
+    <h3>Where these came from</h3>
+    <p class="small">
+      Values reached by iteration on the reported task, not by systematic search. The bands and the
+      structural choices above are the reasoning behind them, but no ablation isolates individual
+      weights, and the numbers should be read as one working configuration rather than an optimum.
+    </p>
+  </div>
+
+  <!-- ==================== 8. GAPS ==================== -->
+  <div class="section" id="gaps">
+    <h2>8. Still undocumented</h2>
     <ul class="bullets">
-      <li>Domain randomization ranges beyond the initial joint scale, commanded height, and the torque-RFI limit of 0.10: link mass, friction, and push magnitudes.</li>
-      <li>Trajectory-dataset generation parameters &mdash; sampling interval, step interval, interpolation method, workspace-bound weight, smoothing ratio, and the stage-F mixing ratios. These are baked into the dataset files and are not recoverable from the training code.</li>
-      <li>Number of evaluation episodes and total duration per trajectory in Table&nbsp;III, and whether the reported hardware numbers come from one policy or are aggregated across seeds.</li>
+      <li>Trajectory-dataset generation parameters &mdash; sampling interval, step interval, interpolation method, workspace-bound weight, smoothing ratio, and the stage-F mixing ratios. These are baked into the dataset files and cannot be recovered from the training code.</li>
+      <li>Domain randomization beyond initial joint scale, commanded height, and the torque-RFI limit: link mass, friction, and push magnitudes.</li>
+      <li>Number of evaluation episodes and duration per trajectory behind Table&nbsp;III, and whether the hardware numbers come from one policy or are aggregated across seeds.</li>
     </ul>
   </div>
 

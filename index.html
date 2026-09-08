@@ -30,7 +30,7 @@
 
   <div class="badges">
     <a class="badge" href="assets/pdfs/paper.pdf">Paper (PDF)</a>
-    <a class="badge" href="details.html">Full training details</a>
+    <a class="badge" href="details.html">Additional training details</a>
     <span class="badge disabled">Code (released on acceptance)</span>
   </div>
 
@@ -131,7 +131,7 @@
         <p class="small">
           Total reward \(r_t = \sum_i w_i r_{i,t}\). &ldquo;Exp.&rdquo; denotes an exponential kernel.
           Values are the final training stage; curriculum-dependent changes are in the
-          <a href="details.html#curriculum">curriculum table</a>.
+          <a href="details.html#curriculum">curriculum section</a>.
         </p>
         <div class="tablewrap">
           <table>
@@ -234,7 +234,7 @@
           which is never provided to the actor during training or deployment. The nominal budget is
           210k iterations; early stopping in stages A&ndash;C brought the actual run to 201,911.
           Full optimizer and network settings are on the
-          <a href="details.html#hparams">training details page</a>.
+          <a href="details.html#hparams">additional details page</a>.
         </p>
       </div>
     </details>
@@ -439,13 +439,13 @@
   </div>
 
   <div class="section">
-    <h2>Training Details</h2>
+    <h2>Additional Training Details</h2>
     <p>
-      Reward kernels, the six-stage curriculum, the GAC derivation, frame construction, symmetry
-      losses, and the full implementation setup are on a separate page rather than compressed into
-      the paper's page budget.
+      A supplement, not a summary: the exact definition of all 31 reward signals, the observation
+      pre-processing, the action-scaling decomposition, the optimizer and network settings, and the
+      complete list of what differs in the E2E-RL baseline. The method itself is in the paper.
     </p>
-    <p><a class="badge" href="details.html">Open the full training details &rarr;</a></p>
+    <p><a class="badge" href="details.html">Open the additional training details &rarr;</a></p>
   </div>
 
   <div class="footer">
