@@ -664,33 +664,6 @@
       at its own error scale.
     </p>
 
-    <h4 style="margin:20px 0 8px; font-size:17px;">What "launch-script override" means</h4>
-    <p>
-      The arm-action penalty differs in <em>what it measures</em>, not just how strongly. The term
-      reads the action term's residual buffer when one exists. For ManTra that buffer holds the
-      clipped, scaled residual, so the penalty is on the correction added to \(a_{\mathrm{GAC}}\).
-      The baseline's action term keeps no such buffer, so the same term falls back to the raw 14
-      arm action channels &mdash; it penalizes the arm command itself.
-    </p>
-    <p>
-      The weights are set through different routes, which is what the table row meant:
-    </p>
-    <ul class="bullets">
-      <li><b>ManTra</b> takes the weight from the experiment config, \(-0.1\), annealed to
-          \(-0.05\) across the first half of stage D by the \(\sigma\)-scheduler. No launch-script
-          flag is involved.</li>
-      <li><b>E2E-RL</b> passes an explicit flag that writes \(-0.5\) into <em>every</em> stage's
-          override and removes the scheduler entry that would otherwise anneal it, so the weight is
-          constant for the whole run. It overrides the config value of \(-0.01\), which is never
-          the value that trains.</li>
-    </ul>
-    <p class="small">
-      So the two numbers are not comparable as a ratio: \(-0.5\) on a raw action is a different
-      quantity from \(-0.05\) on a residual that has already been multiplied by 3. The baseline
-      needs the larger weight because its arm action is unconstrained by any nominal command, and
-      the wrist channels are relaxed to 0.5 so the penalty does not fight the orientation term.
-    </p>
-
     <h3>6.3 Observations</h3>
     <p>
       The baseline's actor and critic each lose two terms, both of which only exist because a
