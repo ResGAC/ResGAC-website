@@ -377,11 +377,16 @@
       stages.
     </p>
 
-    <h3>4.3 Per-stage randomization not in Table&nbsp;II</h3>
+    <h3>4.3 Domain randomization &mdash; curriculum-varied</h3>
+    <p>
+      Two quantities widen with the curriculum, alongside the command ranges already in
+      Table&nbsp;II:
+    </p>
     <div class="tablewrap">
       <table>
         <thead><tr><th></th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th><th>F</th></tr></thead>
         <tbody>
+          <tr><td>Initial joint scale</td><td class="num">[.9, 1.1]</td><td class="num">[.85, 1.15]</td><td class="num">[.85, 1.15]</td><td class="num">[.7, 1.3]</td><td class="num">[.7, 1.3]</td><td class="num">[.7, 1.3]</td></tr>
           <tr><td>Commanded height [m]</td><td class="num">0.73</td><td class="num">[.68, .78]</td><td class="num">[.68, .78]</td><td class="num">[.55, .80]</td><td class="num">[.55, .80]</td><td class="num">[.55, .80]</td></tr>
           <tr><td>Stand probability</td><td class="num">1.0</td><td class="num">1.0</td><td class="num">0.3</td><td class="num">0.2</td><td class="num">0.2</td><td class="num">0.2</td></tr>
           <tr><td>Turn-in-place prob.</td><td class="num">&mdash;</td><td class="num">&mdash;</td><td class="num">0.05</td><td class="num">0.05</td><td class="num">0.10</td><td class="num">0.10</td></tr>
@@ -390,10 +395,55 @@
       </table>
     </div>
     <p class="small">
-      Applied uniformly across all stages: torque-level random force injection at limit 0.10,
-      gait period 1.0 s randomized in [0.6, 1.5] s, and command resampling every 10 s.
+      The initial joint scale multiplies the default pose element-wise at reset, so by stage D the
+      episode can begin from a posture 30% away from nominal in every joint. Initial joint
+      velocities are always zero.
     </p>
-  </div>
+
+    <h3>4.4 Domain randomization &mdash; fixed across the curriculum</h3>
+    <p>
+      Everything below is applied identically in all six stages. Startup terms are drawn once when
+      the scene is built; reset terms are redrawn at the start of every episode, per environment
+      and, where noted, per joint.
+    </p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>When</th><th>Quantity</th><th>Range</th><th>Granularity</th></tr></thead>
+        <tbody>
+          <tr><td rowspan="4">Startup</td><td>Link mass</td><td class="num">&times;[0.90, 1.10]</td><td>per link, over pelvis, hip yaw/roll/pitch, and knee links</td></tr>
+          <tr><td>Added base mass</td><td class="num">[&minus;0.5, +1.5] kg</td><td>per environment</td></tr>
+          <tr><td>Ground friction</td><td class="num">[0.50, 1.25]</td><td>per environment</td></tr>
+          <tr><td>Base center-of-mass offset</td><td class="num">&plusmn;0.05 m in \(x, y, z\)</td><td>per environment</td></tr>
+          <tr><td rowspan="4">Reset</td><td>PD stiffness scale \(k_p\)</td><td class="num">&times;[0.90, 1.10]</td><td>per environment <em>and</em> per joint</td></tr>
+          <tr><td>PD damping scale \(k_d\)</td><td class="num">&times;[0.90, 1.10]</td><td>per environment and per joint</td></tr>
+          <tr><td>Torque-RFI limit scale</td><td class="num">&times;[0.50, 1.50]</td><td>per environment and per joint</td></tr>
+          <tr><td>Push schedule</td><td class="num">resampled</td><td>per environment</td></tr>
+          <tr><td>Step</td><td>Base velocity push</td><td class="num">up to 0.5 m/s in \(x\) and \(y\), every 5&ndash;10 s</td><td>per environment</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4 style="margin:20px 0 8px; font-size:17px;">Torque RFI</h4>
+    <p>
+      Random force injection perturbs the commanded torque directly, scaled by each joint's own
+      effort limit:
+    </p>
+    <div class="eq">
+      $$ \tau \;\leftarrow\; \tau \;+\; \mathcal{U}(-1, 1)\;\cdot\; \lambda_{\mathrm{RFI}}\;\cdot\; s_j \;\cdot\; \tau^{\max}_j,
+         \qquad \lambda_{\mathrm{RFI}} = 0.10,\quad s_j \sim \mathcal{U}(0.5,\, 1.5) $$
+    </div>
+    <p>
+      resampled every control step, with the per-joint scale \(s_j\) redrawn each reset. The
+      nominal 10% of effort limit therefore becomes an effective 5&ndash;15% band that differs
+      between joints and between episodes. Because the perturbation is proportional to
+      \(\tau^{\max}_j\), it is large where the actuator is strong (\(\pm 13.9\) N&middot;m on the
+      knee at nominal) and small where it is weak (\(\pm 0.5\) N&middot;m on a wrist), which keeps
+      it a roughly constant fraction of authority rather than a fixed absolute noise floor.
+    </p>
+    <p class="small">
+      Observation noise is a separate mechanism and is listed per term in &sect;2.2; unlike the
+      terms above it is applied to the actor group only.
+    </p>
 
   <!-- ==================== 5. HPARAMS ==================== -->
   <div class="section" id="hparams">
@@ -632,10 +682,16 @@
   <div class="section" id="gaps">
     <h2>8. Still undocumented</h2>
     <ul class="bullets">
-      <li>Trajectory-dataset generation parameters &mdash; sampling interval, step interval, interpolation method, workspace-bound weight, smoothing ratio, and the stage-F mixing ratios. These are baked into the dataset files and cannot be recovered from the training code.</li>
-      <li>Domain randomization beyond initial joint scale, commanded height, and the torque-RFI limit: link mass, friction, and push magnitudes.</li>
       <li>Number of evaluation episodes and duration per trajectory behind Table&nbsp;III, and whether the hardware numbers come from one policy or are aggregated across seeds.</li>
     </ul>
+    <p class="small">
+      The generation parameters for the precomputed trajectory datasets &mdash; sampling interval,
+      step interval, interpolation method, reference frame, workspace-bound weight, smoothing
+      ratio, and the stage-F mixing ratios &mdash; are documented in the code release, together
+      with the script that rebuilds the datasets. They are baked into the dataset files at
+      generation time and are not recoverable from the training configuration, which is why they
+      are recorded alongside the generator rather than left implicit.
+    </p>
   </div>
 
   <div class="footer">
