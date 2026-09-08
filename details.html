@@ -56,8 +56,8 @@
     <p>
       Table&nbsp;I gives names, forms, and weights. Below is the definition of each of its 25 terms
       as implemented, in the same order and under the same names. Notation follows the paper:
-      \(i \in \{l, r\}\) indexes arms or feet, \(q\) are joint positions, \(v_{xy}^P\) and
-      \(\omega_z^P\) the body-frame planar and yaw velocity, \(c = (v_{xy,d}^P, \omega_{z,d}^{P})\)
+      \(i \in \{l, r\}\) indexes arms or feet, \(q\) are joint positions, \(v_{xy}^{P}\) and
+      \(\omega_{z}^{P}\) the body-frame planar and yaw velocity, \(c = (v_{xy,d}^{P}, \omega_{z,d}^{P})\)
       the locomotion command, \(\mu_t = \mu_\theta(o_t)\) the mean policy action, and
       \(\phi \in [-\pi, \pi]^2\) the per-leg gait phase.
       \(\mathbb{1}[\cdot]\) is the indicator function, and \((\cdot)_+\) is the positive part,
@@ -86,7 +86,7 @@
       \(\lVert g^{X}_{xy}\rVert\) measures tilt without needing a reference orientation and
       without a singularity. Three bodies are scored this way: the pelvis \(g^{P}\), the torso
       link \(g^{T}\), and each foot link \(g^{F_i}\).
-      Finally, \(\hat c = v^{P}_{d,xy}/\lVert v^{P}_{d,xy}\rVert\) is the unit commanded heading
+      Finally, \(\hat c = v_{xy,d}^{P}/\lVert v_{xy,d}^{P}\rVert\) is the unit commanded heading
       direction, and \(\psi\) the base yaw angle.
     </p>
 
@@ -118,9 +118,9 @@
         <thead><tr><th>Term</th><th>\(w_i\)</th><th>Definition</th></tr></thead>
         <tbody>
           <tr><td>Linear velocity</td><td class="num">2.0</td>
-              <td>\(\exp\!\left(-\lVert v_{xy,d}^P - v_{xy}^P\rVert^2/\sigma_v\right)\), with \(v_{xy}\) the root linear velocity rotated into the base frame.</td></tr>
+              <td>\(\exp\!\left(-\lVert v_{xy,d}^{P} - v_{xy}^{P}\rVert^2/\sigma_v\right)\), with \(v_{xy}\) the root linear velocity rotated into the base frame.</td></tr>
           <tr><td>Angular velocity</td><td class="num">1.5</td>
-              <td>\(\exp\!\left(-(\omega_{z,d}^P - \omega_z^P)^2/\sigma_\omega\right)\), \(\sigma_\omega = 0.25\) throughout the curriculum.</td></tr>
+              <td>\(\exp\!\left(-(\omega_{z,d}^{P} - \omega_{z}^{P})^2/\sigma_\omega\right)\), \(\sigma_\omega = 0.25\) throughout the curriculum.</td></tr>
           <tr><td>Swing-foot trajectory</td><td class="num">5.0</td>
               <td>\(\exp\!\left(-\left[(z_l - z_l^{*})^2 + (z_r - z_r^{*})^2\right]/\sigma\right)\), \(\sigma = 0.008\), foot heights measured relative to the terrain. The reference \(z^{*}\) is defined below.</td></tr>
           <tr><td>Pelvis orientation</td><td class="num">1.0</td>
@@ -177,26 +177,26 @@
     <p class="small">
       Each is masked by the commanded behaviour, so the term is inert unless the command puts the
       robot in the regime it polices. Masks read the command components of \(c_t\) &mdash; the
-      commanded planar velocity \(v^{P}_{d,xy} = (v^{P}_{d,x}, v^{P}_{d,y})\) and the commanded
-      yaw rate \(\omega^{P}_{d,z}\); the penalized quantities are the corresponding
-      <em>measured</em> \(v^{P}_{xy}\) and \(\omega^{P}_{z}\). Thresholds are in m/s and rad/s.
+      commanded planar velocity \(v_{xy,d}^{P} = (v_{x,d}^{P}, v_{y,d}^{P})\) and the commanded
+      yaw rate \(\omega_{z,d}^{P}\); the penalized quantities are the corresponding
+      <em>measured</em> \(v_{xy}^{P}\) and \(\omega_{z}^{P}\). Thresholds are in m/s and rad/s.
     </p>
     <div class="tablewrap">
       <table>
         <thead><tr><th>Term</th><th>\(w_i\)</th><th>Mask</th><th>Penalized quantity</th></tr></thead>
         <tbody>
           <tr><td>Heading leakage</td><td class="num">&minus;10</td>
-              <td>\(\lVert v^{P}_{d,xy}\rVert > 0.05 \;\wedge\; \lvert\omega^{P}_{d,z}\rvert < 0.03\)</td>
-              <td>\(\left(\bar\omega^{P}_{z}\right)^2 + 0.15\left(\omega^{P}_{z}\right)^2\)</td></tr>
+              <td>\(\lVert v_{xy,d}^{P}\rVert > 0.05 \;\wedge\; \lvert\omega_{z,d}^{P}\rvert < 0.03\)</td>
+              <td>\(\left(\bar\omega_{z}^{P}\right)^2 + 0.15\left(\omega_{z}^{P}\right)^2\)</td></tr>
           <tr><td>Lateral leakage</td><td class="num">&minus;2</td>
-              <td>\(\lVert v^{P}_{d,xy}\rVert > 0.03\)</td>
-              <td>\(\left(\bar v_\perp\right)^2 + 0.15\left(v_\perp\right)^2\), with the signed \(v_\perp = \hat c_x v^{P}_{y} - \hat c_y v^{P}_{x}\)</td></tr>
+              <td>\(\lVert v_{xy,d}^{P}\rVert > 0.03\)</td>
+              <td>\(\left(\bar v_\perp\right)^2 + 0.15\left(v_\perp\right)^2\), with the signed \(v_\perp = \hat c_x v_{y}^{P} - \hat c_y v_{x}^{P}\)</td></tr>
           <tr><td>Turn-in-place leakage</td><td class="num">&minus;2.5</td>
-              <td>\(\lVert v^{P}_{d,xy}\rVert < 0.03 \;\wedge\; \lvert\omega^{P}_{d,z}\rvert > 0.1\)</td>
-              <td>\(\lVert v^{P}_{xy}\rVert^2\)</td></tr>
+              <td>\(\lVert v_{xy,d}^{P}\rVert < 0.03 \;\wedge\; \lvert\omega_{z,d}^{P}\rvert > 0.1\)</td>
+              <td>\(\lVert v_{xy}^{P}\rVert^2\)</td></tr>
           <tr><td>Standing yaw rate</td><td class="num">&minus;2.5</td>
-              <td>\(\lVert v^{P}_{d,xy}\rVert < 0.03 \;\wedge\; \lvert\omega^{P}_{d,z}\rvert < 0.03\)</td>
-              <td>\(\left(\omega^{P}_{z}\right)^2\)</td></tr>
+              <td>\(\lVert v_{xy,d}^{P}\rVert < 0.03 \;\wedge\; \lvert\omega_{z,d}^{P}\rvert < 0.03\)</td>
+              <td>\(\left(\omega_{z}^{P}\right)^2\)</td></tr>
         </tbody>
       </table>
     </div>
@@ -260,9 +260,9 @@
         <tbody>
           <tr><td><code>arm_command</code></td><td>\(g_{RD}\) in \(c_t\)</td><td class="num">18</td><td class="num">1.0</td><td class="num">0</td>
               <td>Desired end-effector pose per arm in \(\{R\}\): 3 position + 6D rotation.</td></tr>
-          <tr><td><code>command_lin_vel</code></td><td>\(v^{P}_{d,xy}\) in \(c_t\)</td><td class="num">2</td><td class="num">1.0</td><td class="num">0</td>
-              <td>Commanded planar velocity \((v^{P}_{d,x}, v^{P}_{d,y})\).</td></tr>
-          <tr><td><code>command_ang_vel</code></td><td>\(\omega^{P}_{d,z}\) in \(c_t\)</td><td class="num">1</td><td class="num">1.0</td><td class="num">0</td>
+          <tr><td><code>command_lin_vel</code></td><td>\(v_{xy,d}^{P}\) in \(c_t\)</td><td class="num">2</td><td class="num">1.0</td><td class="num">0</td>
+              <td>Commanded planar velocity \((v_{x,d}^{P}, v_{y,d}^{P})\).</td></tr>
+          <tr><td><code>command_ang_vel</code></td><td>\(\omega_{z,d}^{P}\) in \(c_t\)</td><td class="num">1</td><td class="num">1.0</td><td class="num">0</td>
               <td>Commanded yaw rate.</td></tr>
           <tr><td><code>base_height_command</code></td><td>\(z^{P}_{d}\) in \(c_t\)</td><td class="num">1</td><td class="num">1.0</td><td class="num">0</td>
               <td>Commanded pelvis height, randomized by the curriculum.</td></tr>
@@ -281,7 +281,7 @@
           <tr><td><code>projected_gravity</code></td><td>\(g^{\mathrm{proj}}_{t}\)</td><td class="num">3</td><td class="num">1.0</td><td class="num">0.001</td>
               <td>The pelvis projected gravity \(g^{P}\) of &sect;1.</td></tr>
           <tr><td><code>base_ang_vel</code></td><td>\(\omega_t\)</td><td class="num">3</td><td class="num">0.25</td><td class="num">0.01</td>
-              <td>Floating-base angular velocity in the base frame. Obtained from the IMU at deployment, which is why only the angular components are used.</td></tr>
+              <td>Floating-base angular velocity in the base (pelvis) frame. Obtained from the IMU at deployment, which is why only the angular components are used.</td></tr>
           <tr><td><code>last_action</code></td><td>\(a_{\mathrm{RL},t-1}\)</td><td class="num">29</td><td class="num">1.0</td><td class="num">0</td>
               <td><b>Not the raw action.</b> Resolves to <code>last_residual_policy_action</code>: the 15 non-arm targets concatenated with the 14 <em>post-scale</em> arm residuals. Same width as the raw action, different content.</td></tr>
           <tr><td><code>prev_prev_action</code></td><td>\(a_{\mathrm{RL},t-2}\)</td><td class="num">29</td><td class="num">1.0</td><td class="num">0</td>
@@ -298,7 +298,7 @@
         <thead><tr><th>Term</th><th>Dim</th><th>Scale</th><th>Why the actor cannot have it</th></tr></thead>
         <tbody>
           <tr><td><code>base_lin_vel</code></td><td class="num">3</td><td class="num">1.0</td><td>Root linear velocity in the base frame. Not reliably estimated on the robot.</td></tr>
-          <tr><td><code>base_height_error</code></td><td class="num">1</td><td class="num">1.0</td><td>\(z_P - z^{*}_P\). Requires absolute pelvis height, which needs external tracking.</td></tr>
+          <tr><td><code>base_height_error</code></td><td class="num">1</td><td class="num">1.0</td><td>\(z_P - z_d^P\). Requires absolute pelvis height, which needs external tracking.</td></tr>
           <tr><td><code>ee_body_twist_full</code></td><td class="num">12</td><td class="num">0.05</td><td>The ground-truth twist including base linear velocity, versus the actor's truncated copy.</td></tr>
           <tr><td><code>gait_avg_velocity_state</code></td><td class="num">5</td><td class="num">1.0</td><td>\(\bar\omega_z\), \(\bar v_\perp\), both previous-cycle means, and the in-cycle sample count divided by 50. Exposes the accumulator that the gait-averaged penalties score, so the critic can attribute credit for a term whose value depends on history the actor does not see.</td></tr>
         </tbody>
