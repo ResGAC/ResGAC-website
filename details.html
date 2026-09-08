@@ -56,10 +56,22 @@
     <p>
       Table&nbsp;I gives names, forms, and weights. Below is the definition of each of its 25 terms
       as implemented, in the same order and under the same names. Notation follows the paper:
-      \(i \in \{l, r\}\) indexes arms or feet, \(q\) are joint positions, \(v_{xy}\) and
-      \(\omega_z\) the body-frame planar and yaw velocity, \(c = (c_{xy}, \omega_z^{\text{cmd}})\)
+      \(i \in \{l, r\}\) indexes arms or feet, \(q\) are joint positions, \(v_{xy}^P\) and
+      \(\omega_z^P\) the body-frame planar and yaw velocity, \(c = (v_{xy,d}^P, \omega_{z,d}^{P})\)
       the locomotion command, \(\mu_t = \mu_\theta(o_t)\) the mean policy action, and
       \(\phi \in [-\pi, \pi]^2\) the per-leg gait phase.
+      \(\mathbb{1}[\cdot]\) is the indicator function, and \((\cdot)_+\) is the positive part,
+    </p>
+    <div class="eq">
+      $$ (x)_+ \;\triangleq\; \max(x,\, 0) $$
+    </div>
+    <p>
+      so a term written \((x)_+^2\) is zero wherever \(x \le 0\) and grows quadratically only
+      beyond that point &mdash; a one-sided penalty with no reward for staying inside the bound. It
+      appears three times below: in the joint-position limit, where only excursions past the soft
+      bound are charged; in the foot contact force, where only force above the threshold is
+      charged; and in the pre-touchdown velocity, where only descent faster than the safe speed is
+      charged.
     </p>
 
     <h3>1.1 Manipulation</h3>
@@ -100,7 +112,7 @@
           <tr><td>Torso orientation</td><td class="num">1.0</td>
               <td>The same kernel evaluated at the torso link, so waist lean is scored independently of pelvis tilt.</td></tr>
           <tr><td>Base height</td><td class="num">1.0</td>
-              <td>\(\exp\!\left(-(100\,(z^P - z^{P}_d))^2/\sigma\right)\), \(\sigma = 3.0\). <b>The error is converted to centimetres before squaring</b>, so \(\sigma\) is \(3\ \mathrm{cm}^2\), not \(3\ \mathrm{m}^2\). \(z^{*}_P\) is the commanded height, which the curriculum randomizes.</td></tr>
+              <td>\(\exp\!\left(-(100\,(z^P - z^{P}_d))^2/\sigma\right)\), \(\sigma = 3.0\). <b>The error is converted to centimetres before squaring</b>, so \(\sigma\) is \(3\ \mathrm{cm}^2\), not \(3\ \mathrm{m}^2\). \(z_d^P\) is the commanded height, which the curriculum randomizes.</td></tr>
         </tbody>
       </table>
     </div>
