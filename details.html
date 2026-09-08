@@ -128,7 +128,7 @@
           <tr><td>Torso orientation</td><td class="num">1.0</td>
               <td>\(\exp\!\left(-\lVert g^{T}_{xy}\rVert^2/\sigma\right)\) &mdash; the same kernel on the torso link, so waist lean is scored independently of pelvis tilt.</td></tr>
           <tr><td>Base height</td><td class="num">1.0</td>
-              <td>\(\exp\!\left(-(100\,(z^P - z^{P}_d))^2/\sigma\right)\), \(\sigma = 3.0\). <b>The error is converted to centimetres before squaring</b>, so \(\sigma\) is \(3\ \mathrm{cm}^2\), not \(3\ \mathrm{m}^2\). \(z_d^P\) is the commanded height, which the curriculum randomizes.</td></tr>
+              <td>\(\exp\!\left(-(100\,(z^P - z^{P}_d))^2/\sigma\right)\), \(\sigma = 3.0\). <b>The error is converted to centimeters before squaring</b>, so \(\sigma\) is \(3\ \mathrm{cm}^2\), not \(3\ \mathrm{m}^2\). \(z_d^P\) is the commanded height, which the curriculum randomizes.</td></tr>
         </tbody>
       </table>
     </div>
@@ -175,7 +175,7 @@
 
     <h3>1.5 Regularization &mdash; command-gated locomotion</h3>
     <p class="small">
-      Each is masked by the commanded behaviour, so the term is inert unless the command puts the
+      Each is masked by the commanded behavior, so the term is inert unless the command puts the
       robot in the regime it polices. Masks read the command components of \(c_t\) &mdash; the
       commanded planar velocity \(v_{xy,d}^{P} = (v_{x,d}^{P}, v_{y,d}^{P})\) and the commanded
       yaw rate \(\omega_{z,d}^{P}\); the penalized quantities are the corresponding
@@ -269,7 +269,7 @@
           <tr><td><code>ee_error_pose</code></td><td>\(g_{DE,t}\)</td><td class="num">18</td><td class="num">1.0</td><td class="num">0</td>
               <td>Per arm: \(R_{RD}^{\top}(p_{RE} - p_{RD})\) and the 6D form of \(R_{RD}^{\top}R_{RE}\). <b>The position error is rotated into the desired frame</b>, so it is expressed in the frame the command defines rather than the robot's.</td></tr>
           <tr><td><code>ee_error_pose_tanh</code></td><td>\(p^{\mathrm{sat}}_{DE,t}\)</td><td class="num">6</td><td class="num">1.0</td><td class="num">0</td>
-              <td>\(\tanh(p_{DE,t}/\tau)\) per component with \(\tau = 0.01\), i.e. \(\tanh(100\,p_{DE,t})\). Saturates beyond ~2 cm, so it is a high-gain channel for the last millimetres. Position only; no rotation counterpart.</td></tr>
+              <td>\(\tanh(p_{DE,t}/\tau)\) per component with \(\tau = 0.01\), i.e. \(\tanh(100\,p_{DE,t})\). Saturates beyond ~2 cm, so it is a high-gain channel for the last millimeters. Position only; no rotation counterpart.</td></tr>
           <tr><td><code>controller_arm_joint_command</code></td><td>\(a_{\mathrm{GAC},t}\)</td><td class="num">14</td><td class="num">1.0</td><td class="num">0</td>
               <td>The nominal command the residual is correcting. Cached, not recomputed.</td></tr>
           <tr><td><code>ee_body_twist</code></td><td>\(V^{E}_{RE,t}\)</td><td class="num">12</td><td class="num">0.05</td><td class="num">0.02</td>
@@ -522,7 +522,7 @@
     <p class="small">
       The baseline needs 2.3&times; the arm authority because its action <em>is</em> the arm pose,
       not a correction to one. Giving it the residual's &plusmn;0.75 rad would confine it to a
-      neighbourhood of the default pose and make the comparison meaningless.
+      neighborhood of the default pose and make the comparison meaningless.
     </p>
 
     <h3>6.2 Reward</h3>
@@ -592,15 +592,15 @@
       characteristic error) only once the policy can already walk and reach, because a tight kernel
       early gives a reward that is flat at zero across the whole reachable set and therefore carries
       no gradient. The combined \(L_2^2 + L_1\) form exists for the same reason at the other end:
-      once \(e_2\) is at the millimetre scale it contributes almost nothing to the exponent, while
+      once \(e_2\) is at the millimeter scale it contributes almost nothing to the exponent, while
       \(e_1\) still varies linearly and keeps the final approach learnable.
     </p>
 
     <h3>Masks and gait averaging</h3>
     <p>
-      The command-gated penalties are masked rather than weighted because the behaviours they
+      The command-gated penalties are masked rather than weighted because the behaviors they
       police are only errors under some commands: lateral velocity is a fault when walking straight
-      and the intended behaviour when strafing. Gait-cycle averaging exists because the
+      and the intended behavior when strafing. Gait-cycle averaging exists because the
       instantaneous quantities are non-zero by necessity &mdash; a walking biped yaws and sways
       within every stride &mdash; so penalizing them directly trades gait quality for command
       fidelity. Averaging over a completed cycle isolates net drift, and the 0.15&times;
@@ -615,7 +615,7 @@
       by how well each signal is known on hardware rather than uniformly: 0.001 on projected
       gravity, 0.01 on joint positions and base angular velocity, 0.05 on joint velocities, which
       is the noisiest estimate on the robot and the one most likely to cause a sim-to-real gap. The
-      saturated position channel exists because raw millimetre errors are \(10^{-3}\) next to
+      saturated position channel exists because raw millimeter errors are \(10^{-3}\) next to
       \(O(1)\) inputs and would be lost in normalization; \(\tanh(100\,p)\) puts them on the same
       footing without letting large errors dominate.
     </p>
