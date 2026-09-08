@@ -600,31 +600,57 @@
       </table>
     </div>
 
-    <h4 style="margin:20px 0 8px; font-size:17px;">Why the baseline drops the \(L_1\) term</h4>
+    <h4 style="margin:20px 0 8px; font-size:17px;">Why the tolerance can be tighter with a nominal controller</h4>
     <p>
-      The combined kernel puts both error norms in the same exponent, so the two terms are not
-      independent &mdash; the \(L_1\) contribution
-      \(e_1 / (\sqrt{3}\,\sigma_1)\) adds to the exponent regardless of how the squared term is
-      doing. That is what makes it useful for ManTra, where the residual has already driven
-      \(e_2\) to the millimeter scale and the squared term has stopped discriminating.
+      An exponential kernel \(\exp(-e/\sigma)\) is informative only where \(e\) is comparable to
+      \(\sigma\). Once \(e \gg \sigma\) the reward is pinned near zero and <em>flat</em>: it still
+      has a value, but it no longer separates a bad state from a slightly less bad one, so it
+      carries no gradient. Choosing \(\sigma\) is therefore not really a choice about how much
+      accuracy to ask for &mdash; it is a choice about which error regime the reward can see.
     </p>
     <p>
-      It fails for the baseline for the same reason. Without the nominal controller the
-      end-effector error is several times larger, so the \(L_1\) contribution to the exponent is
-      correspondingly large, the exponential saturates near zero, and the tracking reward becomes
-      flat across the whole range the policy actually visits. <b>The term stops carrying gradient,
+      This is where the nominal controller changes what is possible. GAC supplies a
+      <b>performance floor</b>: even at initialization, with the residual at zero, the arm is
+      already tracking at the controller's own accuracy. The error the policy starts from is
+      bounded by the controller rather than by whatever a randomly initialized network produces,
+      so \(\sigma\) can be placed in that regime and the kernel is live from the first iteration.
+      The tight \(\sigma_2 = 0.001\) and the \(L_1\) term are available to ManTra <em>because</em>
+      the controller guarantees the operating point they assume.
+    </p>
+    <p>
+      The end-to-end baseline has no such floor. Its initial error is unbounded in the same sense,
+      and its converged error stays several times larger, so \(\sigma\) cannot be pushed to the
+      same scale: a kernel that tight would read as flat zero across the entire range the policy
+      visits. It has to stay loose enough to cover the errors this architecture actually reaches
+      &mdash; hence \(\sigma_P = 0.005\) rather than 0.001, and \(\sigma_R = 0.10\) rather than
+      0.02.
+    </p>
+    <p>
+      The \(L_1\) term is the sharpest case of this. Both norms sit in the <em>same</em> exponent,
+      so the contribution \(e_1/(\sqrt{3}\,\sigma_1)\) adds regardless of how the squared term is
+      doing. For ManTra that is exactly what makes it useful: the residual has already driven
+      \(e_2\) to the millimeter scale where the squared term has stopped discriminating, and the
+      linear term still varies. For the baseline the same addition is large enough to saturate the
+      exponential outright and the tracking reward goes flat. <b>The term stops carrying gradient
       and the policy neglects end-effector tracking in favor of the reward terms that still
-      respond.</b> The baseline therefore trains on the \(L_2^2\) kernel alone, with
-      \(\sigma_P = 0.005\) rather than ManTra's 0.001 &mdash; a five-fold looser tolerance chosen
-      so the kernel stays informative at the error magnitudes this architecture reaches.
-      \(\sigma_R\) is loosened from 0.02 to 0.10 for the same reason, and the command range is
-      widened to \(\pm 1.0\).
+      respond</b>, which is why the baseline trains on the \(L_2^2\) kernel alone.
+    </p>
+    <p>
+      Read this way, the residual architecture does more than improve final accuracy: by
+      guaranteeing an operating point it <b>enlarges the set of reward shapings that are trainable
+      at all</b>. The precision reported in Table&nbsp;III and the reward that produces it are not
+      independent results &mdash; the second is reachable because of the first.
     </p>
     <p class="small">
-      This matters for reading Table&nbsp;III: the baseline is not ManTra's reward applied to a
-      weaker architecture, which would confound the comparison with a reward the baseline cannot
-      climb. It is the same reward structure retuned so that each method is trained on a kernel
-      informative at its own error scale.
+      The specific values are hand-tuned, and nothing here claims 0.001 and 0.005 are optimal or
+      that the ratio between them is principled. The claim is about which regime each kernel can be
+      placed in, not about where within that regime the tuning landed.
+    </p>
+    <p class="small">
+      This also matters for reading Table&nbsp;III: the baseline is not ManTra's reward applied to
+      a weaker architecture, which would confound the comparison with a kernel the baseline cannot
+      climb. It is the same reward structure retuned so each method trains on a kernel informative
+      at its own error scale.
     </p>
 
     <h4 style="margin:20px 0 8px; font-size:17px;">What "launch-script override" means</h4>
@@ -700,7 +726,9 @@
       early gives a reward that is flat at zero across the whole reachable set and therefore carries
       no gradient. The combined \(L_2^2 + L_1\) form exists for the same reason at the other end:
       once \(e_2\) is at the millimeter scale it contributes almost nothing to the exponent, while
-      \(e_1\) still varies linearly and keeps the final approach learnable.
+      \(e_1\) still varies linearly and keeps the final approach learnable. Which \(\sigma\) is
+      reachable at all depends on the architecture and not only on the task &mdash; see
+      <a href="#baseline">&sect;6.2</a>.
     </p>
 
     <h3>Masks and gait averaging</h3>
