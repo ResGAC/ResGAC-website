@@ -90,7 +90,7 @@
         <thead><tr><th>Term</th><th>\(w_i\)</th><th>Definition</th></tr></thead>
         <tbody>
           <tr><td>Linear velocity</td><td class="num">2.0</td>
-              <td>\(\exp\!\left(-\lVert c_{xy} - v_{xy}\rVert^2/\sigma_v\right)\), with \(v_{xy}\) the root linear velocity rotated into the base frame.</td></tr>
+              <td>\(\exp\!\left(-\lVert v_{xy,d}^P - v_{xy}^P\rVert^2/\sigma_v\right)\), with \(v_{xy}\) the root linear velocity rotated into the base frame.</td></tr>
           <tr><td>Angular velocity</td><td class="num">1.5</td>
               <td>\(\exp\!\left(-(\omega_z^{\text{cmd}} - \omega_z)^2/\sigma_\omega\right)\), \(\sigma_\omega = 0.25\) throughout the curriculum.</td></tr>
           <tr><td>Swing-foot trajectory</td><td class="num">5.0</td>
@@ -117,9 +117,9 @@
           <tr><td>Arm action rate</td><td class="num">&minus;0.5</td>
               <td>\(\lVert \Delta a_t\rVert^2\) over the 14 arm channels of the raw action.</td></tr>
           <tr><td>Non-arm action rate</td><td class="num">&minus;1.0</td>
-              <td>The same over the 12 leg channels.</td></tr>
+              <td>The same over the 15 non-arm channels. The action is partitioned arm / non-arm, not arm / leg / waist: the non-arm group is everything except the 14 arm joints, so it carries the 12 leg joints <em>and</em> the 3 waist joints.</td></tr>
           <tr><td>Mean-action accel.</td><td class="num">&minus;0.10</td>
-              <td>\(\lVert \Delta^2\mu_t\rVert^2 = \lVert \mu_t - 2\mu_{t-1} + \mu_{t-2}\rVert^2\). Registered as two terms of equal weight, one over arm channels and one over non-arm channels. \(\mu\) is the <b>deterministic policy mean</b> supplied by the algorithm, not the sampled action &mdash; differencing the sample would mostly penalize exploration noise.</td></tr>
+              <td>\(\lVert \Delta^2\mu_t\rVert^2 = \lVert \mu_t - 2\mu_{t-1} + \mu_{t-2}\rVert^2\). Registered as two terms of equal weight, one over the 14 arm channels and one over the 15 non-arm channels. \(\mu\) is the <b>deterministic policy mean</b> supplied by the algorithm, not the sampled action &mdash; differencing the sample would mostly penalize exploration noise.</td></tr>
           <tr><td>Arm joint velocity</td><td class="num">&minus;0.05</td>
               <td>\(\sum_{j\in\text{arm}} \dot q_j^2\), measured joint velocity rather than commanded.</td></tr>
           <tr><td>Pose deviation</td><td class="num">&minus;1.0</td>
@@ -226,7 +226,7 @@
           <tr><td><code>arm_command</code></td><td class="num">18</td><td class="num">1.0</td><td class="num">0</td>
               <td>Target pose per arm: 3 position + 6D rotation, in the manipulation frame.</td></tr>
           <tr><td><code>ee_error_pose</code></td><td class="num">18</td><td class="num">1.0</td><td class="num">0</td>
-              <td>Per arm: \(R^{*\top}(p - p^{*})\) and the 6D form of \(R^{*\top}R\). <b>The position error is rotated into the target frame</b>, so the error is expressed in the frame the command defines rather than the robot's.</td></tr>
+              <td>Per arm: \(R_{RD}^{\top}(p_{RE} - p_{RD})\) and the 6D form of \(R_{RD}^{\top}R_{RE}\). <b>The position error is rotated into the target frame</b>, so the error is expressed in the frame the command defines rather than the robot's.</td></tr>
           <tr><td><code>ee_error_pose_tanh</code></td><td class="num">6</td><td class="num">1.0</td><td class="num">0</td>
               <td>\(\tanh(p_{DE}/\tau)\) per component, \(\tau = 0.01\) &mdash; equivalently \(\tanh(100\,p_{DE})\). Saturates beyond ~2 cm, so it is a high-gain channel for the last millimetres. Position only; no rotation counterpart.</td></tr>
           <tr><td><code>command_lin_vel</code></td><td class="num">2</td><td class="num">1.0</td><td class="num">0</td><td>\(c_{xy}\).</td></tr>
@@ -235,9 +235,9 @@
           <tr><td><code>base_ang_vel</code></td><td class="num">3</td><td class="num">0.25</td><td class="num">0.01</td><td>Root angular velocity in the base frame. Available from the IMU at deployment.</td></tr>
           <tr><td><code>dof_pos_relative</code></td><td class="num">29</td><td class="num">1.0</td><td class="num">0.01</td><td>\(q - q^{\text{def}}\).</td></tr>
           <tr><td><code>dof_vel</code></td><td class="num">29</td><td class="num">0.05</td><td class="num">0.05</td><td>Measured joint velocity. The largest noise level in the group, matching how poorly this signal is estimated on hardware.</td></tr>
-          <tr><td><code>last_action</code></td><td class="num">26</td><td class="num">1.0</td><td class="num">0</td>
-              <td><b>Not the raw action.</b> Resolves to <code>last_residual_policy_action</code>: leg targets concatenated with the <em>post-scale</em> arm residual buffer.</td></tr>
-          <tr><td><code>prev_prev_action</code></td><td class="num">29</td><td class="num">1.0</td><td class="num">0</td><td>Raw action two steps back, needed by the mean-action acceleration penalty.</td></tr>
+          <tr><td><code>last_action</code></td><td class="num">29</td><td class="num">1.0</td><td class="num">0</td>
+              <td><b>Not the raw action.</b> Resolves to <code>last_residual_policy_action</code>: the 15 non-arm targets concatenated with the 14 <em>post-scale</em> arm residuals. Same width as the raw action, different content.</td></tr>
+          <tr><td><code>prev_prev_action</code></td><td class="num">29</td><td class="num">1.0</td><td class="num">0</td><td>The raw 29-channel action two steps back, needed by the mean-action acceleration penalty.</td></tr>
           <tr><td><code>controller_arm_joint_command</code></td><td class="num">14</td><td class="num">1.0</td><td class="num">0</td>
               <td>\(a_{\text{GAC}}\), the nominal command the residual is correcting. Cached, not recomputed.</td></tr>
           <tr><td><code>ee_body_twist</code></td><td class="num">12</td><td class="num">0.05</td><td class="num">0.02</td>
@@ -261,14 +261,24 @@
       </table>
     </div>
     <p class="small">
-      The critic group otherwise mirrors the actor's terms, with <code>dof_vel</code> noise listed
-      as 0.02 rather than 0.05 &mdash; inert, since noise is disabled for that group.
+      The critic group otherwise mirrors the actor's terms &mdash; including
+      <code>ee_body_twist</code>, so it carries both the truncated and the full twist &mdash; with
+      <code>dof_vel</code> noise listed as 0.02 rather than 0.05, which is inert since noise is
+      disabled for that group. Totals: <b>198</b> actor inputs and <b>219</b> critic inputs.
     </p>
   </div>
 
   <!-- ==================== 3. ACTION ==================== -->
   <div class="section" id="action">
     <h2>3. Action scaling</h2>
+    <p>
+      The 29-channel action is partitioned <b>arm / non-arm</b>, as
+      \(a_{\mathrm{RL},t} = [a_{\mathrm{RL,arm},t}^{\top},\, a_{\mathrm{RL,other},t}^{\top}]^{\top}\)
+      in the paper: 14 arm joints and 15 non-arm joints, the latter covering the 12 leg joints and
+      the 3 waist joints together. There is no separate waist group &mdash; the waist is commanded
+      directly by the policy alongside the legs, which is why Table&nbsp;I says "non-arm action
+      rate" rather than "leg action rate".
+    </p>
     <p>
       Both the controller and the policy emit <em>normalized</em> joint-position actions. The
       low-level layer converts them with a per-DOF action scale \(\alpha\):
