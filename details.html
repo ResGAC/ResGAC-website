@@ -577,25 +577,81 @@
     </p>
 
     <h3>6.2 Reward</h3>
+    <p>
+      Every reward term is registered in both, with the same weights, except for the end-effector
+      position kernel and the arm-action penalty. Both differences are deliberate retunings of the
+      baseline rather than ManTra's settings imposed on it.
+    </p>
     <div class="tablewrap">
       <table>
-        <thead><tr><th>Term</th><th>ManTra</th><th>E2E-RL</th></tr></thead>
+        <thead><tr><th>Final-stage setting</th><th>ManTra</th><th>E2E-RL</th></tr></thead>
         <tbody>
-          <tr><td>Arm residual, form</td><td class="num">\(L_2^2\)</td><td class="num">per-DOF weighted \(L_2^2\)</td></tr>
-          <tr><td>&nbsp;&nbsp;config weight</td><td class="num">&minus;0.05</td><td class="num">&minus;0.01</td></tr>
-          <tr><td>&nbsp;&nbsp;launch-script override</td><td class="num">none</td><td class="num">&minus;0.5, all stages</td></tr>
-          <tr><td>&nbsp;&nbsp;per-DOF weights</td><td class="num">uniform</td><td class="num">shoulders/elbow 1.0, wrists 0.5</td></tr>
-          <tr><td>\(L_1\) sigma in stages E&ndash;F</td><td class="num">0.01</td><td class="num">0 &mdash; \(L_1\) term disabled, pure \(L_2^2\)</td></tr>
+          <tr><td>EEF position kernel</td><td class="num">\(\exp\!\left(-\frac{e_2}{\sigma_2} - \frac{e_1}{\sqrt{3}\sigma_1}\right)\)</td><td class="num">\(\exp\!\left(-\frac{e_2}{\sigma_P}\right)\), \(L_1\) off</td></tr>
+          <tr><td>&nbsp;&nbsp;\(\sigma_2\) / \(\sigma_P\)</td><td class="num">0.001</td><td class="num">0.005</td></tr>
+          <tr><td>&nbsp;&nbsp;\(\sigma_1\)</td><td class="num">0.01</td><td class="num">0 (disabled)</td></tr>
+          <tr><td>EEF orientation \(\sigma_R\)</td><td class="num">0.02</td><td class="num">0.10</td></tr>
+          <tr><td>Arm-action penalty, quantity</td><td class="num">post-scale residual</td><td class="num">raw arm action</td></tr>
+          <tr><td>&nbsp;&nbsp;weight</td><td class="num">&minus;0.05</td><td class="num">&minus;0.5</td></tr>
+          <tr><td>&nbsp;&nbsp;per-DOF weighting</td><td class="num">uniform</td><td class="num">shoulders/elbow 1.0, wrists 0.5</td></tr>
+          <tr><td>Command range \((v_x, v_y, \omega_z)\)</td><td class="num">&plusmn;0.7</td><td class="num">&plusmn;1.0</td></tr>
           <tr><td>Pre-touchdown velocity</td><td class="num">&minus;2</td><td class="num">not enabled</td></tr>
           <tr><td>Symmetry coef. (critic)</td><td class="num">0.5</td><td class="num">1.0</td></tr>
         </tbody>
       </table>
     </div>
+
+    <h4 style="margin:20px 0 8px; font-size:17px;">Why the baseline drops the \(L_1\) term</h4>
+    <p>
+      The combined kernel puts both error norms in the same exponent, so the two terms are not
+      independent &mdash; the \(L_1\) contribution
+      \(e_1 / (\sqrt{3}\,\sigma_1)\) adds to the exponent regardless of how the squared term is
+      doing. That is what makes it useful for ManTra, where the residual has already driven
+      \(e_2\) to the millimeter scale and the squared term has stopped discriminating.
+    </p>
+    <p>
+      It fails for the baseline for the same reason. Without the nominal controller the
+      end-effector error is several times larger, so the \(L_1\) contribution to the exponent is
+      correspondingly large, the exponential saturates near zero, and the tracking reward becomes
+      flat across the whole range the policy actually visits. <b>The term stops carrying gradient,
+      and the policy neglects end-effector tracking in favor of the reward terms that still
+      respond.</b> The baseline therefore trains on the \(L_2^2\) kernel alone, with
+      \(\sigma_P = 0.005\) rather than ManTra's 0.001 &mdash; a five-fold looser tolerance chosen
+      so the kernel stays informative at the error magnitudes this architecture reaches.
+      \(\sigma_R\) is loosened from 0.02 to 0.10 for the same reason, and the command range is
+      widened to \(\pm 1.0\).
+    </p>
     <p class="small">
-      Every reward term is registered in both; only the ones above differ. The residual penalty means
-      different things in the two: for ManTra it penalizes the correction on top of the controller,
-      for E2E-RL it penalizes the arm action itself, which is why the override is 10&times; larger
-      and the wrists are loosened.
+      This matters for reading Table&nbsp;III: the baseline is not ManTra's reward applied to a
+      weaker architecture, which would confound the comparison with a reward the baseline cannot
+      climb. It is the same reward structure retuned so that each method is trained on a kernel
+      informative at its own error scale.
+    </p>
+
+    <h4 style="margin:20px 0 8px; font-size:17px;">What "launch-script override" means</h4>
+    <p>
+      The arm-action penalty differs in <em>what it measures</em>, not just how strongly. The term
+      reads the action term's residual buffer when one exists. For ManTra that buffer holds the
+      clipped, scaled residual, so the penalty is on the correction added to \(a_{\mathrm{GAC}}\).
+      The baseline's action term keeps no such buffer, so the same term falls back to the raw 14
+      arm action channels &mdash; it penalizes the arm command itself.
+    </p>
+    <p>
+      The weights are set through different routes, which is what the table row meant:
+    </p>
+    <ul class="bullets">
+      <li><b>ManTra</b> takes the weight from the experiment config, \(-0.1\), annealed to
+          \(-0.05\) across the first half of stage D by the \(\sigma\)-scheduler. No launch-script
+          flag is involved.</li>
+      <li><b>E2E-RL</b> passes an explicit flag that writes \(-0.5\) into <em>every</em> stage's
+          override and removes the scheduler entry that would otherwise anneal it, so the weight is
+          constant for the whole run. It overrides the config value of \(-0.01\), which is never
+          the value that trains.</li>
+    </ul>
+    <p class="small">
+      So the two numbers are not comparable as a ratio: \(-0.5\) on a raw action is a different
+      quantity from \(-0.05\) on a residual that has already been multiplied by 3. The baseline
+      needs the larger weight because its arm action is unconstrained by any nominal command, and
+      the wrist channels are relaxed to 0.5 so the penalty does not fight the orientation term.
     </p>
 
     <h3>6.3 Observations</h3>
