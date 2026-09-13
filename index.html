@@ -372,6 +372,14 @@
       <p class="small" style="margin-top:10px;">Faster convergence with lower steady-state position and orientation error.</p>
     </div>
   </div>
+  <div class="figure figure-small" style="max-width:640px; margin-top:26px;">
+    <img src="assets/imgs/nonsmooth_eef_error_convergence_layered.png" alt="End-effector position and orientation error convergence after setpoint changes for ResGAC, E2E-RL, and SONIC-Teleop-v1.1" />
+  </div>
+  <p class="small" style="max-width:640px; margin:10px auto 0;">
+    End-effector error convergence for the setpoints arm-sweep. The 25 setpoint intervals are
+    aligned at each command transition (\(t = 0\)) and aggregated; solid curves are the mean
+    position and orientation error, shaded regions one standard deviation.
+  </p>
 </div>
 
 <div class="container">
@@ -497,6 +505,14 @@
       as the body moves, a causal inverse-dynamics compensator for an approximate second-order
       tracking response is applied to the converted reference, using only current and past
       samples.
+    </p>
+    <div class="figure figure-small" style="margin-top:18px;">
+      <img src="assets/imgs/mime_man_yz_time_series.png" alt="World-frame lateral and height tracking of both hands in the Mime-man demo, ResGAC versus E2E-RL" />
+    </div>
+    <p class="small" style="margin-top:10px;">
+      World-frame \(YZ\) tracking of both hands in the Mime-man demo. "Baseline" is E2E-RL.
+      Position and orientation mean absolute errors: 8.8&nbsp;mm and 2.69&deg; for ResGAC,
+      30.0&nbsp;mm and 13.75&deg; for E2E-RL.
     </p>
   </div>
 
