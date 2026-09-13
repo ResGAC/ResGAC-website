@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>ManTra &mdash; Additional Training Details</title>
+  <title>ResGAC &mdash; Additional Training Details</title>
   <meta name="robots" content="noindex" />
   <link rel="stylesheet" href="assets/css/style.css" />
   <script>
@@ -103,7 +103,7 @@
           </tr>
           <tr>
             <td>EEF orientation</td><td class="num">3.0</td>
-            <td>\(\exp\!\left(-\operatorname{mean}_i\left(3 - \operatorname{tr}(R_{DE_i,t})\right)/\sigma_R\right)\).
+            <td>\(\exp\!\left(-\operatorname{mean}_i\operatorname{tr}\left(I_3 - R_{DE_i,t}\right)/\sigma_R\right)\).
                 Both poses are taken in the manipulation frame; the target rotation is
                 reconstructed from the 6D representation carried in the command.</td>
           </tr>
@@ -184,13 +184,13 @@
       <table>
         <thead><tr><th>Term</th><th>\(w_i\)</th><th>Mask</th><th>Penalized quantity</th></tr></thead>
         <tbody>
-          <tr><td>Heading leakage</td><td class="num">&minus;10</td>
+          <tr><td>Heading drift</td><td class="num">&minus;10</td>
               <td>\(\lVert v_{xy,d}^{P}\rVert > 0.05 \;\wedge\; \lvert\omega_{z,d}^{P}\rvert < 0.03\)</td>
               <td>\(\left(\bar\omega_{z}^{P}\right)^2 + 0.15\left(\omega_{z}^{P}\right)^2\)</td></tr>
-          <tr><td>Lateral leakage</td><td class="num">&minus;2</td>
+          <tr><td>Lateral drift</td><td class="num">&minus;2</td>
               <td>\(\lVert v_{xy,d}^{P}\rVert > 0.03\)</td>
               <td>\(\left(\bar v_\perp\right)^2 + 0.15\left(v_\perp\right)^2\), with the signed \(v_\perp = \hat c_x v_{y}^{P} - \hat c_y v_{x}^{P}\)</td></tr>
-          <tr><td>Turn-in-place leakage</td><td class="num">&minus;2.5</td>
+          <tr><td>Turn-in-place drift</td><td class="num">&minus;2.5</td>
               <td>\(\lVert v_{xy,d}^{P}\rVert < 0.03 \;\wedge\; \lvert\omega_{z,d}^{P}\rvert > 0.1\)</td>
               <td>\(\lVert v_{xy}^{P}\rVert^2\)</td></tr>
           <tr><td>Standing yaw rate</td><td class="num">&minus;2.5</td>
@@ -550,15 +550,13 @@
     <p>
       E2E-RL is the same recipe with the nominal controller removed. Because the comparison is the
       paper's main architectural claim, the complete difference is listed here rather than
-      summarized. <b>The FastSAC configuration is byte-identical between the two</b> &mdash; every
-      field in the algorithm config matches, so the comparison is not confounded by optimizer
-      tuning.
+      summarized. The FastSAC experiment configuration is identical between the two; the only optimizer-side difference is the critic symmetry coefficient, set at launch (0.5 for ResGAC, 1.0 for E2E-RL) and listed below.
     </p>
 
     <h3>6.1 Action space</h3>
     <div class="tablewrap">
       <table>
-        <thead><tr><th></th><th>ManTra</th><th>E2E-RL</th></tr></thead>
+        <thead><tr><th></th><th>ResGAC</th><th>E2E-RL</th></tr></thead>
         <tbody>
           <tr><td>Arm action</td><td>residual on \(a_{\text{GAC}}\)</td><td>direct joint target</td></tr>
           <tr><td>Arm pre-scale</td><td class="num">3.0</td><td class="num">7.0</td></tr>
@@ -579,11 +577,11 @@
     <p>
       Every reward term is registered in both, with the same weights, except for the end-effector
       position kernel and the arm-action penalty. Both differences are deliberate retunings of the
-      baseline rather than ManTra's settings imposed on it.
+      baseline rather than ResGAC's settings imposed on it.
     </p>
     <div class="tablewrap">
       <table>
-        <thead><tr><th>Final-stage setting</th><th>ManTra</th><th>E2E-RL</th></tr></thead>
+        <thead><tr><th>Final-stage setting</th><th>ResGAC</th><th>E2E-RL</th></tr></thead>
         <tbody>
           <tr><td>EEF position kernel</td><td class="num">\(\exp\!\left(-\frac{e_2}{\sigma_2} - \frac{e_1}{\sqrt{3}\sigma_1}\right)\)</td><td class="num">\(\exp\!\left(-\frac{e_2}{\sigma_P}\right)\), \(L_1\) off</td></tr>
           <tr><td>&nbsp;&nbsp;\(\sigma_2\) / \(\sigma_P\)</td><td class="num">0.001</td><td class="num">0.005</td></tr>
@@ -620,7 +618,7 @@
       already tracking at the controller's own accuracy. The error the policy starts from is
       bounded by the controller rather than by whatever a randomly initialized network produces,
       so \(\sigma\) can be placed in that regime and the kernel is live from the first iteration.
-      The tight \(\sigma_2 = 0.001\) and the \(L_1\) term are available to ManTra <em>because</em>
+      The tight \(\sigma_2 = 0.001\) and the \(L_1\) term are available to ResGAC <em>because</em>
       the controller guarantees the operating point they assume.
     </p>
     <p>
@@ -634,7 +632,7 @@
     <p>
       The \(L_1\) term is the sharpest case of this. Both norms sit in the <em>same</em> exponent,
       so the contribution \(e_1/(\sqrt{3}\,\sigma_1)\) adds regardless of how the squared term is
-      doing. For ManTra that is exactly what makes it useful: the residual has already driven
+      doing. For ResGAC that is exactly what makes it useful: the residual has already driven
       \(e_2\) to the millimeter scale where the squared term has stopped discriminating, and the
       linear term still varies. For the baseline the same addition is large enough to saturate the
       exponential outright and the tracking reward goes flat. <b>The term stops carrying gradient
@@ -657,7 +655,7 @@
       explanation for why the baseline trains better without the \(L_1\) term.
     </p>
     <p class="small">
-      This also matters for reading Table&nbsp;III: the baseline is not ManTra's reward applied to
+      This also matters for reading Table&nbsp;III: the baseline is not ResGAC's reward applied to
       a weaker architecture, which would confound the comparison with a kernel the baseline cannot
       climb. It is the same reward structure retuned so each method trains on a kernel informative
       at its own error scale.
@@ -665,9 +663,7 @@
 
     <h3>6.3 Observations</h3>
     <p>
-      The baseline's actor and critic each lose two terms, both of which only exist because a
-      controller does: <code>controller_arm_joint_command</code> (14) and <code>ee_body_twist</code>
-      / <code>ee_body_twist_full</code> (12). Actor: 16 terms &rarr; 14. Everything else &mdash;
+      The baseline's actor and critic each lose the same two terms, both of which only exist because a controller does: <code>controller_arm_joint_command</code> (14) and the truncated <code>ee_body_twist</code> (12). Actor: 16 terms (198 inputs) &rarr; 14 (172); critic: 20 terms (219) &rarr; 18 (193). The critic keeps <code>ee_body_twist_full</code>, but without a controller that term reads zero. Everything else &mdash;
       scales, noise levels, clipping, normalization &mdash; is identical.
     </p>
     <p class="small">
@@ -690,7 +686,7 @@
       <b>Shaping penalties</b> sit at 0.05&ndash;2.5 and are unbounded above, so they are kept small
       enough that the exponential terms remain the dominant gradient in normal operation.
       <b>Constraint-like penalties</b> sit at 5&ndash;10 (foot proximity, foot orientation, heading
-      leakage) or 200 (termination): these are meant to be prohibitive rather than traded off.
+      drift) or 200 (termination): these are meant to be prohibitive rather than traded off.
       Termination at &minus;200 against an alive bonus of +10 makes a fall cost roughly 20 steps of
       survival, so early falling is never locally profitable.
     </p>
@@ -704,8 +700,7 @@
     <p>
       Every tracking term is \(\exp(-e/\sigma)\), so \(\sigma\) sets the error at which the reward
       falls to \(1/e\) &mdash; it is a <em>tolerance</em>, not a gain. The curriculum tightens
-      \(\sigma_P\) from 0.02 to 0.001 (\(\sqrt{0.001} \approx 3\) cm to \(\approx 3\) mm of
-      characteristic error) only once the policy can already walk and reach, because a tight kernel
+      \(\sigma_P\) from 0.02 to 0.001 (\(\sqrt{0.02} \approx 14\) cm down to \(\sqrt{0.001} \approx 3\) cm of per-arm error, since \(e_2\) is a squared distance in meters) only once the policy can already walk and reach, because a tight kernel
       early gives a reward that is flat at zero across the whole reachable set and therefore carries
       no gradient. The combined \(L_2^2 + L_1\) form exists for the same reason at the other end:
       once \(e_2\) is at the millimeter scale it contributes almost nothing to the exponent, while

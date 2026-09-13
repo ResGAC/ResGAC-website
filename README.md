@@ -1,4 +1,4 @@
-# ManTra — project page (anonymous)
+# ResGAC — project page (anonymous)
 
 Static project page for a double-blind submission. No build step: GitHub Pages
 serves these files directly (`.nojekyll` disables the Jekyll build).

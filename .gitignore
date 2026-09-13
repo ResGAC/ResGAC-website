@@ -18,3 +18,10 @@ Thumbs.db
 
 # Paper source handed to the agent -- never publish unscrubbed.
 raw_paper/
+
+# Working files that must never be published: paper drafts dropped into
+# assets/ (the page links assets/pdfs/paper.pdf only), editor backups, and
+# writing-review notes.
+assets/*.pdf
+*.bak
+*.writing-review.md

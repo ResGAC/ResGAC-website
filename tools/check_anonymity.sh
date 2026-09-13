@@ -61,7 +61,7 @@ NEEDLES+=(
   '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.(edu|com|org|ac\.[a-z]{2})'
   'orcid'
   'acknowledge?ments?'
-  '(funded|supported) by'
+  '(funded|supported) by (the |an? )?[A-Z]'
   'our (previous|prior|earlier) (work|paper)'
   'github\.com/[A-Za-z0-9-]+/'
 )

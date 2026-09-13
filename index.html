@@ -6,7 +6,7 @@
 
   <!-- ANONYMITY: no author in <title>, no <meta name="author">, no og:* tags
        naming a lab or person, no analytics snippet. -->
-  <title>ManTra</title>
+  <title>ResGAC</title>
   <meta name="description" content="Anonymous project page for a double-blind submission." />
   <meta name="robots" content="noindex" />
 
@@ -18,9 +18,9 @@
 <div class="container">
 
   <!-- ---------- Header ---------- -->
-  <h1 class="page-title">ManTra</h1>
+  <h1 class="page-title">ResGAC</h1>
   <p class="subtitle">
-    Manipulator Tracking with High Precision<br>in Whole-body Humanoid Control
+    Precise End-Effector Tracking<br>for Humanoid Loco-Manipulation
   </p>
 
   <div class="anon">
@@ -48,8 +48,8 @@
       </video>
     </div>
     <p class="small" style="margin-top:10px;">
-      ManTra on a Unitree G1: full-\(SE(3)\) dual-arm end-effector tracking during locomotion,
-      locomotion-disturbance rejection, and world-frame end-effector holding.
+      ResGAC on a Unitree G1: full-\(SE(3)\) dual-arm end-effector tracking, locomotion-disturbance
+      rejection, standing peg-in-hole insertion, and world-frame end-effector holding.
     </p>
   </div>
 
@@ -63,8 +63,9 @@
       joint-position action space and controls the remaining joints for locomotion and balance.
       A <b>ground-attached heading frame</b> removes the kinematic transmission of pelvis roll,
       pitch, and heave to the end-effector while preserving planar motion.
-      On hardware, ManTra reaches <b>6.5&nbsp;mm / 1.37&deg;</b> tracking error and beats every
-      baseline we tested, including SONIC.
+      On hardware, ResGAC reaches <b>6.5&nbsp;mm / 1.37&deg;</b> tracking error, beats every
+      baseline we tested including SONIC, and succeeds in <b>90%</b> of standing peg-in-hole
+      trials against 50% for SONIC.
     </p>
   </div>
 
@@ -74,7 +75,7 @@
     <p>
       Precise end-effector tracking during humanoid whole-body motion is challenging due to
       floating-base oscillations, gravity, dynamic coupling, and locomotion-induced disturbances.
-      We propose <b>ManTra</b>, a whole-body humanoid controller for precise end-effector pose
+      We propose <b>ResGAC</b>, a whole-body humanoid controller for precise end-effector pose
       tracking that combines geometric admittance control (GAC) with residual reinforcement
       learning. GAC provides structured full-pose task-space feedback and generates nominal arm
       joint-position targets, while residual RL compensates for unmodeled dynamics and coordinates
@@ -82,11 +83,12 @@
       formulation allows the same GAC law to be utilized across manipulation reference frames.
       Based on this formulation, we introduce a ground-attached heading frame that removes the
       kinematic transmission of pelvis roll, pitch, and heave while preserving planar locomotion.
-      ManTra is validated on a real Unitree G1 humanoid. Across four end-effector tracking
-      benchmarks, ManTra consistently outperforms representative baselines, including SONIC, in
+      ResGAC is validated on a real Unitree G1 humanoid. Across four end-effector tracking
+      benchmarks, ResGAC consistently outperforms representative baselines, including SONIC, in
       translational and rotational errors. Real-world experiments further demonstrate reduced
       transmission of locomotion-induced pelvis disturbances through the proposed ground-attached
-      heading frame and accurate full \(SE(3)\) pose world-frame tracking during body motion.
+      heading frame, 90% success in a standing peg-in-hole task compared with 50% for SONIC, and
+      accurate full \(SE(3)\) pose world-frame tracking during body motion.
     </p>
   </div>
 
@@ -95,12 +97,16 @@
     <h2>Method</h2>
 
     <div class="figure">
-      <img src="assets/imgs/fig1_overview.png" alt="ManTra overview: GAC plus residual policy, reference frames, and task trajectories" />
+      <img src="assets/imgs/fig1_overview.png" alt="ResGAC overview: GAC plus residual policy, reference frames, and evaluation tasks" />
     </div>
     <p class="small" style="margin-top:10px;">
-      Figure 1: (a) ManTra in the residual RL structure, with GAC as the baseline end-effector
-      controller. (b) The pelvis \(\{P\}\), heading \(\{H\}\), and ground-attached heading
-      \(\{H_0\}\) frames. (c) The evaluation trajectories.
+      Figure 1: (a) ResGAC consists of a geometric admittance controller (GAC) that provides the
+      nominal end-effector command and a residual RL policy that learns bounded arm corrections
+      while controlling the remaining whole-body joints. (b) The pelvis \(\{P\}\), heading
+      \(\{H\}\), and ground-attached heading \(\{H_0\}\) frames: \(\{H\}\) removes pelvis roll and
+      pitch, and \(\{H_0\}\) additionally removes heave, isolating planar \((x, y, \psi)\) motion
+      from the manipulation task. (c) Evaluation tasks: arm-sweep, infinity, pick-and-place,
+      peg-in-hole, and the Mime-man demo for world-frame end-effector tracking.
     </p>
 
     <p>
@@ -129,7 +135,7 @@
       <summary>Reward terms and final-stage weights <span class="tag">&mdash; Table I, all 25 active terms</span></summary>
       <div class="detail-body">
         <p class="small">
-          Total reward \(r_t = \sum_i w_i r_{i,t}\). &ldquo;Exp.&rdquo; denotes an exponential kernel.
+          Total reward \(r_t = \sum_i w_i r_{i,t}\). \(\exp(\cdot)\) denotes an exponential kernel.
           Values are the final training stage; curriculum-dependent changes are in the
           <a href="details.html#curriculum">curriculum section</a>.
         </p>
@@ -137,15 +143,15 @@
           <table>
             <thead><tr><th>Group</th><th>Term</th><th>Form</th><th>&sigma; / Param.</th><th>\(w_i\)</th></tr></thead>
             <tbody>
-              <tr><td rowspan="2">Manip.</td><td>EEF position</td><td>Exp. \(L_2^2 + L_1\)</td><td class="num">0.001 / 0.01</td><td class="num">4.0</td></tr>
-              <tr><td>EEF orientation</td><td>Exp. \(SO(3)\)</td><td class="num">0.02</td><td class="num">3.0</td></tr>
+              <tr><td rowspan="2">Manip.</td><td>EEF position</td><td>\(\exp(L_2^2 + L_1)\)</td><td class="num">0.001 / 0.01</td><td class="num">4.0</td></tr>
+              <tr><td>EEF orientation</td><td>\(\exp(SO(3))\)</td><td class="num">0.02</td><td class="num">3.0</td></tr>
 
-              <tr><td rowspan="6">Loco.</td><td>Linear velocity</td><td>Exp. \(L_2^2\)</td><td class="num">0.25</td><td class="num">2.0</td></tr>
-              <tr><td>Angular velocity</td><td>Exp. \(L_2^2\)</td><td class="num">0.25</td><td class="num">1.5</td></tr>
-              <tr><td>Swing-foot trajectory</td><td>Exp. \(L_2^2\)</td><td class="num">0.008</td><td class="num">5.0</td></tr>
-              <tr><td>Pelvis orientation</td><td>Exp. \(L_2^2\)</td><td class="num">0.04</td><td class="num">1.0</td></tr>
-              <tr><td>Torso orientation</td><td>Exp. \(L_2^2\)</td><td class="num">0.04</td><td class="num">1.0</td></tr>
-              <tr><td>Base height</td><td>Exp. \(L_2^2\)</td><td class="num">3.0</td><td class="num">1.0</td></tr>
+              <tr><td rowspan="6">Loco.</td><td>Linear velocity</td><td>\(\exp(L_2^2)\)</td><td class="num">0.25</td><td class="num">2.0</td></tr>
+              <tr><td>Angular velocity</td><td>\(\exp(L_2^2)\)</td><td class="num">0.25</td><td class="num">1.5</td></tr>
+              <tr><td>Swing-foot trajectory</td><td>\(\exp(L_2^2)\)</td><td class="num">0.008</td><td class="num">5.0</td></tr>
+              <tr><td>Pelvis orientation</td><td>\(\exp(L_2^2)\)</td><td class="num">0.04</td><td class="num">1.0</td></tr>
+              <tr><td>Torso orientation</td><td>\(\exp(L_2^2)\)</td><td class="num">0.04</td><td class="num">1.0</td></tr>
+              <tr><td>Base height</td><td>\(\exp(L_2^2)\)</td><td class="num">3.0</td><td class="num">1.0</td></tr>
 
               <tr><td rowspan="17">Reg.</td><td>Arm residual</td><td>\(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;0.05</td></tr>
               <tr><td>EEF body twist</td><td>\(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;0.05</td></tr>
@@ -157,9 +163,9 @@
               <tr><td>Joint-position limit</td><td>Linear excess</td><td class="num">95%</td><td class="num">&minus;1.0</td></tr>
               <tr><td>Foot proximity</td><td>Threshold</td><td class="num">0.15 m</td><td class="num">&minus;10</td></tr>
               <tr><td>Foot orientation</td><td>\(L_2\)</td><td class="num">&mdash;</td><td class="num">&minus;5</td></tr>
-              <tr><td>Turn-in-place leakage</td><td>Gated \(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;2.5</td></tr>
-              <tr><td>Heading leakage</td><td>Gait-avg. \(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;10</td></tr>
-              <tr><td>Lateral leakage</td><td>Gait-avg. \(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;2</td></tr>
+              <tr><td>Turn-in-place drift</td><td>Gated \(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;2.5</td></tr>
+              <tr><td>Heading drift</td><td>Gait-avg. \(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;10</td></tr>
+              <tr><td>Lateral drift</td><td>Gait-avg. \(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;2</td></tr>
               <tr><td>Standing yaw rate</td><td>Gated \(L_2^2\)</td><td class="num">&mdash;</td><td class="num">&minus;2.5</td></tr>
               <tr><td>Foot contact force</td><td>Threshold \(L_2^2\)</td><td class="num">400 N</td><td class="num">&minus;2</td></tr>
               <tr><td>Pre-touchdown velocity</td><td>Gated \(L_2^2\)</td><td class="num">0.15 m/s</td><td class="num">&minus;2</td></tr>
@@ -172,7 +178,7 @@
     </details>
 
     <details class="detail">
-      <summary>Training curriculum <span class="tag">&mdash; Table II, six stages, 201,911 iterations, ~18 h on one L40S</span></summary>
+      <summary>Training curriculum <span class="tag">&mdash; Table II, six stages, 201,911 iterations, ~16 h on one L40S</span></summary>
       <div class="detail-body">
         <div class="tablewrap">
           <table>
@@ -220,7 +226,7 @@
               <tr><td>Control rate (GAC and policy)</td><td class="num">50 Hz (sim 200 Hz, decimation 4)</td></tr>
               <tr><td>Episode length</td><td class="num">20 s = 1000 steps</td></tr>
               <tr><td>Parallel environments</td><td class="num">4096</td></tr>
-              <tr><td>Hardware / wall-clock</td><td class="num">1&times; NVIDIA L40S, ~18 h</td></tr>
+              <tr><td>Hardware / wall-clock</td><td class="num">1&times; NVIDIA L40S, ~16 h</td></tr>
               <tr><td>Algorithm</td><td class="num">FastSAC, distributional critic</td></tr>
               <tr><td>Actor / critic hidden dim</td><td class="num">512 / 768</td></tr>
               <tr><td>Total iterations (actual)</td><td class="num">201,911</td></tr>
@@ -255,9 +261,9 @@
         <p class="small" style="margin-top:10px;">A fast, smooth trajectory spanning a broad arm workspace.</p>
       </div>
       <div class="vidcell">
-        <h3>Nonsmooth arm-sweep</h3>
-        <div class="video"><video controls playsinline preload="metadata"><source src="assets/videos/nonsmooth_sweep.mp4" type="video/mp4" /></video></div>
-        <p class="small" style="margin-top:10px;">Discrete full-arm-range setpoints, producing step-change behavior. Tests transient response.</p>
+        <h3>Setpoints arm-sweep</h3>
+        <div class="video"><video controls playsinline preload="metadata"><source src="assets/videos/setpoints_sweep.mp4" type="video/mp4" /></video></div>
+        <p class="small" style="margin-top:10px;">A sequence of discrete full-arm-range setpoints, used to evaluate step-response behavior.</p>
       </div>
       <div class="vidcell">
         <h3>Infinity</h3>
@@ -273,7 +279,7 @@
 
     <h3 style="margin-top:26px;">Quantitative results</h3>
     <p class="small">
-      Mean &plusmn; standard deviation over temporal samples and both arms. For the nonsmooth
+      Mean &plusmn; standard deviation over temporal samples and both arms. For the setpoints
       trajectory, only steady-state samples after each command transition are included. Lower is
       better; <b>best</b> in bold, <u>second-best</u> underlined. All controllers are evaluated in
       the pelvis frame \(\{P\}\) except SONIC-Teleop-v1.1, whose released policy uses a
@@ -284,7 +290,7 @@
         <thead>
           <tr>
             <th rowspan="2">Controller</th>
-            <th colspan="2">Smooth</th><th colspan="2">Nonsmooth</th>
+            <th colspan="2">Smooth</th><th colspan="2">Setpoints</th>
             <th colspan="2">Infinity</th><th colspan="2">Pick-and-Place</th>
           </tr>
           <tr>
@@ -313,12 +319,12 @@
             <td class="num"><u>19.7 &plusmn; 9.6</u></td><td class="num"><u>8.65 &plusmn; 8.63</u></td>
             <td class="num"><u>15.3 &plusmn; 6.4</u></td><td class="num"><u>6.44 &plusmn; 2.77</u></td>
             <td class="num"><u>14.5 &plusmn; 3.9</u></td><td class="num">6.23 &plusmn; 3.17</td></tr>
-          <tr><td>GAC+Split-RL</td>
+          <tr><td>GAC+Decoupled-RL</td>
             <td class="num">98.5 &plusmn; 32.5</td><td class="num">14.80 &plusmn; 6.16</td>
             <td class="num">94.5 &plusmn; 24.9</td><td class="num">13.31 &plusmn; 3.78</td>
             <td class="num">50.6 &plusmn; 12.6</td><td class="num">9.47 &plusmn; 1.87</td>
             <td class="num">74.1 &plusmn; 37.5</td><td class="num">12.25 &plusmn; 3.68</td></tr>
-          <tr><td><b>ManTra (ours)</b></td>
+          <tr><td><b>ResGAC (ours)</b></td>
             <td class="num"><b>22.4 &plusmn; 25.0</b></td><td class="num"><b>5.29 &plusmn; 7.00</b></td>
             <td class="num"><b>6.5 &plusmn; 3.7</b></td><td class="num"><b>1.37 &plusmn; 0.76</b></td>
             <td class="num"><b>14.1 &plusmn; 7.1</b></td><td class="num"><b>3.63 &plusmn; 2.15</b></td>
@@ -331,13 +337,13 @@
       <summary>What the two architectural ablations show</summary>
       <div class="detail-body">
         <p>
-          <b>E2E-RL</b> uses the same recipe as ManTra with the nominal GAC controller removed. It
+          <b>E2E-RL</b> uses the same recipe as ResGAC with the nominal GAC controller removed. It
           shows consistently larger tracking errors, which is the case for explicit task-space
           feedback.
         </p>
         <p>
-          <b>GAC+Split-RL</b> removes the arm residual instead: the arms are controlled by GAC
-          alone while RL handles the remaining joints. It performs substantially worse than ManTra
+          <b>GAC+Decoupled-RL</b> removes the arm residual instead: the arms are controlled by GAC
+          alone while RL handles the remaining joints. It performs substantially worse than ResGAC
           &mdash; and worse than E2E-RL on position &mdash; indicating that geometric feedback
           alone does not compensate for gravity and whole-body dynamic coupling. Both halves of the
           architecture are load-bearing.
@@ -351,7 +357,7 @@
 <!-- ---------- Wide band: baseline comparison ---------- -->
 <div class="wide-section">
   <h2 style="font-family:var(--serif); font-size:30px; margin:34px 0 6px;">Baseline Comparison</h2>
-  <p class="small" style="margin:0 0 14px;">Same reference trajectory, same robot, three controllers.</p>
+  <p class="small" style="margin:0 0 14px;">Setpoints arm-sweep: the same reference, the same robot, three controllers. The paper's Fig.&nbsp;2 aggregates the 25 setpoint transitions of this trajectory.</p>
   <div class="grid grid-3wide">
     <div class="vidcell">
       <h3>E2E-RL</h3>
@@ -364,8 +370,8 @@
       <p class="small" style="margin-top:10px;">The strongest baseline, and the only one using a heading-frame representation.</p>
     </div>
     <div class="vidcell">
-      <h3>ManTra (ours)</h3>
-      <div class="video"><video controls playsinline preload="metadata"><source src="assets/videos/cmp_mantra.mp4" type="video/mp4" /></video></div>
+      <h3>ResGAC (ours)</h3>
+      <div class="video"><video controls playsinline preload="metadata"><source src="assets/videos/cmp_resgac.mp4" type="video/mp4" /></video></div>
       <p class="small" style="margin-top:10px;">Faster convergence with lower steady-state position and orientation error.</p>
     </div>
   </div>
@@ -377,7 +383,7 @@
   <div class="section">
     <h2>Disturbance Rejection via Frame Selection</h2>
     <p>
-      A static arm-holding task during forward and backward walking, comparing two ManTra policies
+      A static arm-holding task during forward and backward walking, comparing two ResGAC policies
       that differ only in their manipulation reference frame. The <b>transmission ratio</b>
       \(\rho_x = \sigma_{\text{EEF},x} / \sigma_{P,x}\) normalizes end-effector variation by the
       pelvis variation that caused it; lower means stronger rejection.
@@ -419,6 +425,58 @@
     </p>
   </div>
 
+  <!-- ---------- Peg-in-hole ---------- -->
+  <div class="section">
+    <h2>Peg-in-Hole Task</h2>
+    <p>
+      Whether the tracking accuracy is sufficient for task-level manipulation, tested as standing
+      peg-in-hole insertion. The standing configuration isolates manipulator accuracy from
+      lower-body placement error. The hole pose is estimated from OptiTrack markers and used as the
+      insertion target for both controllers.
+    </p>
+
+    <div class="grid two-col">
+      <div class="vidcell">
+        <h3>ResGAC (ours)</h3>
+        <div class="video"><video controls playsinline preload="metadata"><source src="assets/videos/peg_resgac.mp4" type="video/mp4" /></video></div>
+        <p class="small" style="margin-top:10px;">18 of 20 trials succeed.</p>
+      </div>
+      <div class="vidcell">
+        <h3>SONIC-Teleop-v1.1</h3>
+        <div class="video"><video controls playsinline preload="metadata"><source src="assets/videos/peg_sonic.mp4" type="video/mp4" /></video></div>
+        <p class="small" style="margin-top:10px;">10 of 20 trials succeed.</p>
+      </div>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Controller</th><th>Successes</th><th>Success rate</th></tr></thead>
+        <tbody>
+          <tr><td><b>ResGAC (ours)</b></td><td class="num"><b>18 / 20</b></td><td class="num"><b>90%</b></td></tr>
+          <tr><td>SONIC-Teleop-v1.1</td><td class="num">10 / 20</td><td class="num">50%</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <details class="detail">
+      <summary>Setup and failure analysis</summary>
+      <div class="detail-body">
+        <p>
+          The marker-to-hole transform is not precisely calibrated, so the commanded target carries
+          a registration error with respect to the true hole pose. To accommodate it, the task uses
+          a <b>10&nbsp;mm diametral clearance</b>: a 25&nbsp;mm peg into a 35&nbsp;mm hole. Each
+          controller is evaluated over 20 trials against the same externally estimated target.
+        </p>
+        <p>
+          Both ResGAC failures occur when the registration error is compounded by temporary
+          OptiTrack marker occlusion. For SONIC, insufficient tracking accuracy is the primary
+          failure mode, with occlusion and registration error as an additional, shared source of
+          uncertainty.
+        </p>
+      </div>
+    </details>
+  </div>
+
   <!-- ---------- Mime-man ---------- -->
   <div class="section">
     <h2>World-Frame Tracking: Mime-Man Demo</h2>
@@ -431,9 +489,17 @@
       come from OptiTrack-based pelvis localization.
     </p>
     <p>
-      ManTra holds the commanded world-frame pose to a mean position error of <b>8.8&nbsp;mm</b> and
-      a mean orientation error of <b>2.69&deg;</b>, against <b>76.5&nbsp;mm</b> and <b>13.65&deg;</b>
-      for E2E-RL &mdash; even with the world-frame reference compensator tuned for the baseline.
+      ResGAC holds the commanded world-frame pose to a position mean absolute error of
+      <b>8.8&nbsp;mm</b> and an orientation mean absolute error of <b>2.69&deg;</b>, against
+      <b>30.0&nbsp;mm</b> and <b>13.75&deg;</b> for E2E-RL &mdash; even with the world-frame
+      reference compensator tuned for the baseline.
+    </p>
+    <p class="small">
+      Both controllers use the same \(\{H_0\}\) representation, global wrapper, and world-to-\(H_0\)
+      command conversion \(g_{H_0D} = g_{WH_0}^{-1}\,g_{WD}\). Because the converted command varies
+      as the body moves, a causal inverse-dynamics compensator for an approximate second-order
+      tracking response is applied to the converted reference, using only current and past
+      samples.
     </p>
   </div>
 
@@ -448,7 +514,7 @@
   </div>
 
   <div class="footer">
-    Anonymous project page for a double-blind submission. Last updated: 2026-09-08.
+    Anonymous project page for a double-blind submission. Last updated: 2026-09-13.
   </div>
 
 </div>
