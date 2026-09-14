@@ -18,7 +18,7 @@
 <div class="container">
 
   <!-- ---------- Header ---------- -->
-  <h1 class="page-title">Precise End-Effector Tracking<br>for Humanoid Loco-Manipulation</h1>
+  <h1 class="page-title">Precise \(SE(3)\) End-Effector Tracking<br>for Humanoid Loco-Manipulation</h1>
 
   <div class="anon">
     <b>Anonymous submission &mdash; under double-blind review.</b><br>
@@ -38,14 +38,9 @@
   <!-- ---------- Teaser ---------- -->
   <div class="section">
     <h2>Overview</h2>
-    <div class="video">
-      <video controls playsinline preload="metadata" poster="assets/imgs/teaser_poster.jpg">
-        <source src="assets/videos/teaser.mp4" type="video/mp4" />
-        Your browser does not support the video tag.
-      </video>
-    </div>
+    <div class="video-pending">Overview video in preparation.</div>
     <p class="small" style="margin-top:10px;">
-      ResGAC on a Unitree G1: full-\(SE(3)\) dual-arm end-effector tracking, locomotion-disturbance
+      ResGAC on a Unitree G1: \(SE(3)\) dual-arm end-effector tracking, locomotion-disturbance
       rejection, standing peg-in-hole insertion, and world-frame end-effector holding.
     </p>
   </div>
@@ -54,7 +49,7 @@
   <div class="panel tldr">
     <h2>TL;DR</h2>
     <p>
-      <b>ResGAC</b>: A humanoid tracks <b>full-\(SE(3)\) dual-arm end-effector poses while walking</b>.
+      <b>ResGAC</b>: A humanoid tracks <b>\(SE(3)\) dual-arm end-effector poses while walking</b>.
       A floating-base <b>geometric admittance controller</b> produces nominal arm joint targets from
       task-space pose feedback; <b>residual RL</b> adds a bounded correction in the same
       joint-position action space and controls the remaining joints for locomotion and balance.
@@ -74,18 +69,19 @@
       floating-base oscillations, gravity, dynamic coupling, and locomotion-induced disturbances.
       We propose <b>ResGAC</b>, a whole-body humanoid controller for precise end-effector pose
       tracking that combines geometric admittance control (GAC) with residual reinforcement
-      learning. GAC provides structured full-pose task-space feedback and generates nominal arm
+      learning. GAC provides structured \(SE(3)\) task-space feedback and generates nominal arm
       joint-position targets, while residual RL compensates for unmodeled dynamics and coordinates
-      locomotion and balance in the same joint-position action space. The left-invariant geometric
-      formulation allows the same GAC law to be utilized across manipulation reference frames.
-      Based on this formulation, we introduce a ground-attached heading frame that removes the
-      kinematic transmission of pelvis roll, pitch, and heave while preserving planar locomotion.
-      ResGAC is validated on a real Unitree G1 humanoid. Across four end-effector tracking
-      benchmarks, ResGAC consistently outperforms representative baselines, including SONIC, in
-      translational and rotational errors. Real-world experiments further demonstrate reduced
-      transmission of locomotion-induced pelvis disturbances through the proposed ground-attached
-      heading frame, 90% success in a standing peg-in-hole task compared with 50% for SONIC, and
-      accurate full \(SE(3)\) pose world-frame tracking during body motion.
+      locomotion and balance in the shared joint-position action space. The left-invariant
+      geometric formulation allows the same GAC law to be utilized across manipulation reference
+      frames. This enables the use of a ground-attached heading frame that preserves planar
+      locomotion while removing pelvis roll, pitch, and heave from the manipulation reference,
+      thereby reducing reference-induced end-effector motion during locomotion. ResGAC is
+      validated on a real Unitree G1 humanoid. Across four end-effector tracking benchmarks,
+      ResGAC consistently outperforms representative baselines, including SONIC, in translational
+      and rotational errors. Real-world experiments further demonstrate reduced transmission of
+      locomotion-induced pelvis disturbances through the proposed ground-attached heading frame,
+      90% success in a standing peg-in-hole task compared with 50% for SONIC, and accurate
+      world-frame \(SE(3)\) end-effector pose tracking during body motion.
     </p>
   </div>
 
@@ -98,11 +94,11 @@
     </div>
     <p class="small" style="margin-top:10px;">
       Figure 1: (a) ResGAC consists of a geometric admittance controller (GAC) that provides the
-      nominal end-effector command and a residual RL policy that learns bounded arm corrections
+      nominal end-effector command and a residual RL policy that learns arm corrections
       while controlling the remaining whole-body joints. (b) The pelvis \(\{P\}\), heading
       \(\{H\}\), and ground-attached heading \(\{H_0\}\) frames: \(\{H\}\) removes pelvis roll and
       pitch, and \(\{H_0\}\) additionally removes heave, isolating planar \((x, y, \psi)\) motion
-      from the manipulation task. (c) Evaluation tasks: arm-sweep, infinity, pick-and-place,
+      from the manipulation task. (c) \(SE(3)\) end-effector pose tracking and manipulation tasks: arm-sweep, infinity, pick-and-place,
       peg-in-hole, and the Mime-man demo for world-frame end-effector tracking.
     </p>
 
@@ -315,7 +311,7 @@
   <div class="section" style="border-top:none; margin-top:8px; padding-top:0;">
     <h3 style="margin-top:26px;">Quantitative results</h3>
     <p class="small">
-      Mean &plusmn; standard deviation over temporal samples and both arms. For the setpoints
+      Mean &plusmn; standard deviation of the per-sample error magnitudes, aggregated over temporal samples and both arms. For the setpoints
       trajectory, only steady-state samples after each command transition are included. Lower is
       better; <b>best</b> in bold, <u>second-best</u> underlined. All controllers are evaluated in
       the pelvis frame \(\{P\}\) except SONIC-Teleop-v1.1, whose released policy uses a
@@ -369,6 +365,13 @@
       </table>
     </div>
 
+    <p>
+      ResGAC has the lowest position and orientation error on all four trajectories. On the
+      setpoints and pick-and-place trajectories it reaches sub-centimeter position error
+      (6.5&nbsp;mm and 6.6&nbsp;mm) and below 2&deg; orientation error (1.37&deg; and 1.67&deg;),
+      54&ndash;67% and 72% lower than the best baseline, respectively.
+    </p>
+
     <details class="detail">
       <summary>What the two architectural ablations show</summary>
       <div class="detail-body">
@@ -390,12 +393,12 @@
 
   <!-- ---------- Disturbance rejection ---------- -->
   <div class="section">
-    <h2>Disturbance Rejection via Frame Selection</h2>
+    <h2>Frame-based Disturbance Attenuation</h2>
     <p>
       A static arm-holding task during forward and backward walking, comparing two ResGAC policies
       that differ only in their manipulation reference frame. The <b>transmission ratio</b>
       \(\rho_x = \sigma_{\text{EEF},x} / \sigma_{P,x}\) normalizes end-effector variation by the
-      pelvis variation that caused it; lower means stronger rejection.
+      pelvis variation that caused it; lower means weaker transmission of pelvis motion. End-effector error is reported as the mean absolute error (MAE) from the fixed world-frame hold target.
     </p>
 
     <div class="video" style="margin-top:6px;"><video controls playsinline preload="metadata" poster="assets/imgs/posters/walking_frames.jpg"><source src="assets/videos/walking_frames.mp4" type="video/mp4" /></video></div>
@@ -411,9 +414,9 @@
           <tr><td>Pelvis roll std. [&deg;]</td><td class="num">1.218</td><td class="num">1.322</td></tr>
           <tr><td>Pelvis pitch std. [&deg;]</td><td class="num">3.794</td><td class="num">4.107</td></tr>
           <tr><td>Pelvis \(z\) std. [mm]</td><td class="num">6.280</td><td class="num">6.219</td></tr>
-          <tr><td>EEF roll std. [&deg;]</td><td class="num"><b>0.963</b></td><td class="num">1.266</td></tr>
-          <tr><td>EEF pitch std. [&deg;]</td><td class="num"><b>3.621</b></td><td class="num">3.962</td></tr>
-          <tr><td>EEF \(z\) std. [mm]</td><td class="num"><b>5.558</b></td><td class="num">6.632</td></tr>
+          <tr><td>EEF roll MAE [&deg;]</td><td class="num"><b>0.807</b></td><td class="num">1.113</td></tr>
+          <tr><td>EEF pitch MAE [&deg;]</td><td class="num"><b>2.600</b></td><td class="num">2.757</td></tr>
+          <tr><td>EEF \(z\) MAE [mm]</td><td class="num"><b>12.56</b></td><td class="num">22.50</td></tr>
           <tr><td>Roll transmission ratio</td><td class="num"><b>0.790</b></td><td class="num">0.958</td></tr>
           <tr><td>Pitch transmission ratio</td><td class="num"><b>0.954</b></td><td class="num">0.964</td></tr>
           <tr><td>\(z\) transmission ratio</td><td class="num"><b>0.884</b></td><td class="num">1.068</td></tr>
@@ -421,9 +424,12 @@
       </table>
     </div>
     <p class="small">
-      Pelvis disturbance levels are comparable between the two policies, so the difference is
-      attributable to the frame rather than to a gentler gait. The improvement in pitch is smaller,
-      indicating that pitch variation is less effectively rejected through frame selection alone.
+      Pelvis motion is comparable between the two policies, so the difference is attributable to
+      the frame rather than to a gentler gait. For roll, \(\{H_0\}\) lowers the transmission ratio
+      from 0.958 to 0.790 and the EEF MAE from 1.11&deg; to 0.81&deg;. Pitch is largely unaffected
+      by frame selection (0.954 vs. 0.964): locomotion-induced impact dynamics propagate through the
+      arm mainly in pitch, owing to its lever-like configuration. For \(z\), \(\{H_0\}\) lowers the
+      EEF MAE from 22.5&nbsp;mm to 12.6&nbsp;mm and the ratio from 1.068 to 0.884.
     </p>
   </div>
 
