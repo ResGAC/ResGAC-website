@@ -6,7 +6,7 @@
 
   <!-- ANONYMITY: no author in <title>, no <meta name="author">, no og:* tags
        naming a lab or person, no analytics snippet. -->
-  <title>Precise End-Effector Tracking for Humanoid Loco-Manipulation</title>
+  <title>Precise SE(3) End-Effector Tracking for Humanoid Loco-Manipulation</title>
   <meta name="description" content="Anonymous project page for a double-blind submission." />
   <meta name="robots" content="noindex" />
 
@@ -54,7 +54,7 @@
   <div class="panel tldr">
     <h2>TL;DR</h2>
     <p>
-      A humanoid tracks <b>full-\(SE(3)\) dual-arm end-effector poses while walking</b>.
+      <b>ResGAC</b>: A humanoid tracks <b>full-\(SE(3)\) dual-arm end-effector poses while walking</b>.
       A floating-base <b>geometric admittance controller</b> produces nominal arm joint targets from
       task-space pose feedback; <b>residual RL</b> adds a bounded correction in the same
       joint-position action space and controls the remaining joints for locomotion and balance.
@@ -251,29 +251,68 @@
       these trajectories appears in the training curriculum.
     </p>
 
-    <div class="grid two-col">
-      <div class="vidcell">
-        <h3>Smooth arm-sweep</h3>
-        <div class="video"><video controls playsinline preload="metadata"><source src="assets/videos/smooth_sweep.mp4" type="video/mp4" /></video></div>
-        <p class="small" style="margin-top:10px;">A fast, smooth trajectory spanning a broad arm workspace.</p>
-      </div>
-      <div class="vidcell">
-        <h3>Setpoints arm-sweep</h3>
-        <div class="video"><video controls playsinline preload="metadata"><source src="assets/videos/setpoints_sweep.mp4" type="video/mp4" /></video></div>
-        <p class="small" style="margin-top:10px;">A sequence of discrete full-arm-range setpoints, used to evaluate step-response behavior.</p>
-      </div>
-      <div class="vidcell">
-        <h3>Infinity</h3>
-        <div class="video"><video controls playsinline preload="metadata"><source src="assets/videos/infinity.mp4" type="video/mp4" /></video></div>
-        <p class="small" style="margin-top:10px;">An infinity-shaped trajectory with simultaneous position and moderate orientation variation.</p>
-      </div>
-      <div class="vidcell">
-        <h3>Pick-and-place</h3>
-        <div class="video"><video controls playsinline preload="metadata"><source src="assets/videos/pick_and_place.mp4" type="video/mp4" /></video></div>
-        <p class="small" style="margin-top:10px;">A slower task-space trajectory sampled from a teleoperated pick-and-place demonstration.</p>
-      </div>
-    </div>
+    <p class="small">Pick a trajectory: each tab shows all six controllers, then a head-to-head against SONIC-Teleop-v1.1.</p>
+  </div>
 
+</div><!-- /.container -->
+
+<!-- ---------- Tracking videos: one tab per benchmark trajectory ---------- -->
+<div class="wide-section">
+  <div class="tabs" role="tablist" aria-label="Benchmark trajectory">
+    <button type="button" class="tab" role="tab" id="tab-smooth" aria-controls="panel-smooth" aria-selected="true">Smooth arm-sweep</button>
+    <button type="button" class="tab" role="tab" id="tab-setpoints" aria-controls="panel-setpoints" aria-selected="false">Setpoints arm-sweep</button>
+    <button type="button" class="tab" role="tab" id="tab-infinity" aria-controls="panel-infinity" aria-selected="false">Infinity</button>
+    <button type="button" class="tab" role="tab" id="tab-pickplace" aria-controls="panel-pickplace" aria-selected="false">Pick-and-place</button>
+  </div>
+  <div class="tabpanel" role="tabpanel" id="panel-smooth" aria-labelledby="tab-smooth">
+    <p class="small" style="text-align:center; margin:0 0 4px;">A fast, smooth trajectory spanning a broad arm workspace.</p>
+    <h3>All six controllers</h3>
+    <div class="video"><video controls playsinline preload="metadata" poster="assets/imgs/posters/traj_smooth_all6.jpg"><source src="assets/videos/traj_smooth_all6.mp4" type="video/mp4" /></video></div>
+    <p class="small" style="margin-top:8px;">Top row: ResGAC, E2E-RL, GAC+Decoupled-RL. Bottom row: SONIC-Teleop-v1.1, SONIC-Teleop, SONIC-IK-WBT (labeled SONIC-3pt-v1.1 and SONIC-3pt in the video).</p>
+    <h3>ResGAC vs. SONIC-Teleop-v1.1</h3>
+    <div class="video"><video controls playsinline preload="metadata" poster="assets/imgs/posters/traj_smooth_vs_sonic.jpg"><source src="assets/videos/traj_smooth_vs_sonic.mp4" type="video/mp4" /></video></div>
+    <p class="small" style="margin-top:8px;">ResGAC (left) against SONIC-Teleop-v1.1 (right), the strongest baseline on position error in Table&nbsp;III.</p>
+  </div>
+  <div class="tabpanel" role="tabpanel" id="panel-setpoints" aria-labelledby="tab-setpoints">
+    <p class="small" style="text-align:center; margin:0 0 4px;">A sequence of discrete full-arm-range setpoints, used to evaluate step-response behavior.</p>
+    <h3>All six controllers</h3>
+    <div class="video"><video controls playsinline preload="metadata" poster="assets/imgs/posters/traj_setpoints_all6.jpg"><source src="assets/videos/traj_setpoints_all6.mp4" type="video/mp4" /></video></div>
+    <p class="small" style="margin-top:8px;">Top row: ResGAC, E2E-RL, GAC+Decoupled-RL. Bottom row: SONIC-Teleop-v1.1, SONIC-Teleop, SONIC-IK-WBT (labeled SONIC-3pt-v1.1 and SONIC-3pt in the video).</p>
+    <h3>ResGAC vs. SONIC-Teleop-v1.1</h3>
+    <div class="video"><video controls playsinline preload="metadata" poster="assets/imgs/posters/traj_setpoints_vs_sonic.jpg"><source src="assets/videos/traj_setpoints_vs_sonic.mp4" type="video/mp4" /></video></div>
+    <p class="small" style="margin-top:8px;">ResGAC (left) against SONIC-Teleop-v1.1 (right), the strongest baseline on position error in Table&nbsp;III.</p>
+    <div class="figure figure-small" style="max-width:640px; margin-top:24px;">
+      <img src="assets/imgs/nonsmooth_eef_error_convergence_layered.png" alt="End-effector position and orientation error convergence after setpoint changes for ResGAC, E2E-RL, and SONIC-Teleop-v1.1" />
+    </div>
+    <p class="small" style="max-width:640px; margin:10px auto 0;">
+      End-effector error convergence for the setpoints arm-sweep. The 25 setpoint intervals are
+      aligned at each command transition (\(t = 0\)) and aggregated; solid curves are the mean
+      position and orientation error, shaded regions one standard deviation.
+    </p>
+  </div>
+  <div class="tabpanel" role="tabpanel" id="panel-infinity" aria-labelledby="tab-infinity">
+    <p class="small" style="text-align:center; margin:0 0 4px;">An infinity-shaped trajectory with simultaneous position and moderate orientation variation.</p>
+    <h3>All six controllers</h3>
+    <div class="video"><video controls playsinline preload="metadata" poster="assets/imgs/posters/traj_infinity_all6.jpg"><source src="assets/videos/traj_infinity_all6.mp4" type="video/mp4" /></video></div>
+    <p class="small" style="margin-top:8px;">Top row: ResGAC, E2E-RL, GAC+Decoupled-RL. Bottom row: SONIC-Teleop-v1.1, SONIC-Teleop, SONIC-IK-WBT (labeled SONIC-3pt-v1.1 and SONIC-3pt in the video).</p>
+    <h3>ResGAC vs. SONIC-Teleop-v1.1</h3>
+    <div class="video"><video controls playsinline preload="metadata" poster="assets/imgs/posters/traj_infinity_vs_sonic.jpg"><source src="assets/videos/traj_infinity_vs_sonic.mp4" type="video/mp4" /></video></div>
+    <p class="small" style="margin-top:8px;">ResGAC (left) against SONIC-Teleop-v1.1 (right), the strongest baseline on position error in Table&nbsp;III.</p>
+  </div>
+  <div class="tabpanel" role="tabpanel" id="panel-pickplace" aria-labelledby="tab-pickplace">
+    <p class="small" style="text-align:center; margin:0 0 4px;">A slower task-space trajectory sampled from a teleoperated pick-and-place demonstration. Shown at 4&times; speed.</p>
+    <h3>All six controllers</h3>
+    <div class="video"><video controls playsinline preload="metadata" poster="assets/imgs/posters/traj_pickplace_all6.jpg"><source src="assets/videos/traj_pickplace_all6.mp4" type="video/mp4" /></video></div>
+    <p class="small" style="margin-top:8px;">Top row: ResGAC, E2E-RL, GAC+Decoupled-RL. Bottom row: SONIC-Teleop-v1.1, SONIC-Teleop, SONIC-IK-WBT (labeled SONIC-3pt-v1.1 and SONIC-3pt in the video).</p>
+    <h3>ResGAC vs. SONIC-Teleop-v1.1</h3>
+    <div class="video"><video controls playsinline preload="metadata" poster="assets/imgs/posters/traj_pickplace_vs_sonic.jpg"><source src="assets/videos/traj_pickplace_vs_sonic.mp4" type="video/mp4" /></video></div>
+    <p class="small" style="margin-top:8px;">ResGAC (left) against SONIC-Teleop-v1.1 (right), the strongest baseline on position error in Table&nbsp;III.</p>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="section" style="border-top:none; margin-top:8px; padding-top:0;">
     <h3 style="margin-top:26px;">Quantitative results</h3>
     <p class="small">
       Mean &plusmn; standard deviation over temporal samples and both arms. For the setpoints
@@ -349,41 +388,6 @@
     </details>
   </div>
 
-</div><!-- /.container -->
-
-<!-- ---------- Wide band: baseline comparison ---------- -->
-<div class="wide-section">
-  <h2 style="font-family:var(--serif); font-size:30px; margin:34px 0 6px;">Baseline Comparison</h2>
-  <p class="small" style="margin:0 0 14px;">Setpoints arm-sweep: the same reference, the same robot, three controllers. The paper's Fig.&nbsp;2 aggregates the 25 setpoint transitions of this trajectory.</p>
-  <div class="grid grid-3wide">
-    <div class="vidcell">
-      <h3>E2E-RL</h3>
-      <div class="video"><video controls playsinline preload="metadata"><source src="assets/videos/cmp_e2e.mp4" type="video/mp4" /></video></div>
-      <p class="small" style="margin-top:10px;">No nominal controller: larger steady-state error and slower convergence after each command transition.</p>
-    </div>
-    <div class="vidcell">
-      <h3>SONIC-Teleop-v1.1</h3>
-      <div class="video"><video controls playsinline preload="metadata"><source src="assets/videos/cmp_sonic.mp4" type="video/mp4" /></video></div>
-      <p class="small" style="margin-top:10px;">The strongest baseline, and the only one using a heading-frame representation.</p>
-    </div>
-    <div class="vidcell">
-      <h3>ResGAC (ours)</h3>
-      <div class="video"><video controls playsinline preload="metadata"><source src="assets/videos/cmp_resgac.mp4" type="video/mp4" /></video></div>
-      <p class="small" style="margin-top:10px;">Faster convergence with lower steady-state position and orientation error.</p>
-    </div>
-  </div>
-  <div class="figure figure-small" style="max-width:640px; margin-top:26px;">
-    <img src="assets/imgs/nonsmooth_eef_error_convergence_layered.png" alt="End-effector position and orientation error convergence after setpoint changes for ResGAC, E2E-RL, and SONIC-Teleop-v1.1" />
-  </div>
-  <p class="small" style="max-width:640px; margin:10px auto 0;">
-    End-effector error convergence for the setpoints arm-sweep. The 25 setpoint intervals are
-    aligned at each command transition (\(t = 0\)) and aggregated; solid curves are the mean
-    position and orientation error, shaded regions one standard deviation.
-  </p>
-</div>
-
-<div class="container">
-
   <!-- ---------- Disturbance rejection ---------- -->
   <div class="section">
     <h2>Disturbance Rejection via Frame Selection</h2>
@@ -394,18 +398,11 @@
       pelvis variation that caused it; lower means stronger rejection.
     </p>
 
-    <div class="grid two-col">
-      <div class="vidcell">
-        <h3>Pelvis frame \(\{P\}\)</h3>
-        <div class="video"><video controls playsinline preload="metadata"><source src="assets/videos/frame_pelvis.mp4" type="video/mp4" /></video></div>
-        <p class="small" style="margin-top:10px;">Pelvis roll, pitch, and heave are transmitted to the commanded end-effector pose.</p>
-      </div>
-      <div class="vidcell">
-        <h3>Ground-attached heading frame \(\{H_0\}\)</h3>
-        <div class="video"><video controls playsinline preload="metadata"><source src="assets/videos/frame_h0.mp4" type="video/mp4" /></video></div>
-        <p class="small" style="margin-top:10px;">The same policy recipe with \(\{H_0\}\): visibly steadier hands for the same gait.</p>
-      </div>
-    </div>
+    <div class="video" style="margin-top:6px;"><video controls playsinline preload="metadata" poster="assets/imgs/posters/walking_frames.jpg"><source src="assets/videos/walking_frames.mp4" type="video/mp4" /></video></div>
+    <p class="small" style="margin-top:10px;">
+      Left: ground-attached heading frame \(\{H_0\}\) (proposed). Right: pelvis frame \(\{P\}\).
+      Both policies hold a fixed end-effector command while the humanoid walks.
+    </p>
 
     <div class="tablewrap">
       <table>
@@ -440,18 +437,7 @@
       insertion target for both controllers.
     </p>
 
-    <div class="grid two-col">
-      <div class="vidcell">
-        <h3>ResGAC (ours)</h3>
-        <div class="video"><video controls playsinline preload="metadata"><source src="assets/videos/peg_resgac.mp4" type="video/mp4" /></video></div>
-        <p class="small" style="margin-top:10px;">18 of 20 trials succeed.</p>
-      </div>
-      <div class="vidcell">
-        <h3>SONIC-Teleop-v1.1</h3>
-        <div class="video"><video controls playsinline preload="metadata"><source src="assets/videos/peg_sonic.mp4" type="video/mp4" /></video></div>
-        <p class="small" style="margin-top:10px;">10 of 20 trials succeed.</p>
-      </div>
-    </div>
+    <div class="video-pending">Peg-in-hole videos are in preparation.</div>
 
     <div class="tablewrap">
       <table>
@@ -486,9 +472,10 @@
   <div class="section">
     <h2>World-Frame Tracking: Mime-Man Demo</h2>
     <div class="video">
-      <video controls playsinline preload="metadata"><source src="assets/videos/mime_man.mp4" type="video/mp4" /></video>
+      <video controls playsinline preload="metadata" poster="assets/imgs/posters/mime_man_2x.jpg"><source src="assets/videos/mime_man_2x.mp4" type="video/mp4" /></video>
     </div>
     <p class="small" style="margin-top:10px;">
+      Shown at 2&times; speed (<a href="assets/videos/mime_man_1x.mp4">real-time version</a>); left ResGAC, right E2E-RL.
       The end effectors are moved to designated world-frame poses and then commanded to remain
       fixed in the world while the humanoid translates and rotates its body. Locomotion commands
       come from OptiTrack-based pelvis localization.
@@ -531,6 +518,32 @@
   </div>
 
 </div>
+
+<script>
+  // Trajectory tabs. Panels start visible so the page still works without JS.
+  (function () {
+    var tabs = Array.prototype.slice.call(document.querySelectorAll('.tab'));
+    if (!tabs.length) return;
+    function show(i, focus) {
+      tabs.forEach(function (t, j) {
+        var on = i === j, panel = document.getElementById(t.getAttribute('aria-controls'));
+        t.setAttribute('aria-selected', on ? 'true' : 'false');
+        t.tabIndex = on ? 0 : -1;
+        if (!on) panel.querySelectorAll('video').forEach(function (v) { v.pause(); });
+        panel.hidden = !on;
+      });
+      if (focus) tabs[i].focus();
+    }
+    tabs.forEach(function (t, i) {
+      t.addEventListener('click', function () { show(i, false); });
+      t.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowRight') { e.preventDefault(); show((i + 1) % tabs.length, true); }
+        if (e.key === 'ArrowLeft')  { e.preventDefault(); show((i - 1 + tabs.length) % tabs.length, true); }
+      });
+    });
+    show(0, false);
+  })();
+</script>
 
 <!-- MathJax: the page uses inline math in a handful of captions and tables. -->
 <script>
