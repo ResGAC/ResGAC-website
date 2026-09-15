@@ -450,12 +450,12 @@
       <div class="vidcell">
         <h3>ResGAC (ours)</h3>
         <div class="video"><video controls playsinline preload="metadata" poster="assets/imgs/posters/peg_standing_resgac.jpg"><source src="assets/videos/peg_standing_resgac.mp4" type="video/mp4" /></video></div>
-        <p class="small" style="margin-top:8px;">18 of 20 trials succeed.</p>
+        <p class="small" style="margin-top:8px;">All 20 trials in one continuous take, shown at 2&times; speed. 18 of 20 succeed.</p>
       </div>
       <div class="vidcell">
         <h3>SONIC-Teleop-v1.1</h3>
         <div class="video"><video controls playsinline preload="metadata" poster="assets/imgs/posters/peg_standing_sonic.jpg"><source src="assets/videos/peg_standing_sonic.mp4" type="video/mp4" /></video></div>
-        <p class="small" style="margin-top:8px;">10 of 20 trials succeed.</p>
+        <p class="small" style="margin-top:8px;">All 20 trials in one continuous take, shown at 2&times; speed. 10 of 20 succeed.</p>
       </div>
     </div>
 
@@ -492,15 +492,19 @@
       <div class="vidcell">
         <h3>ResGAC (ours)</h3>
         <div class="video"><video controls playsinline preload="metadata" poster="assets/imgs/posters/peg_walking_resgac.jpg"><source src="assets/videos/peg_walking_resgac.mp4" type="video/mp4" /></video></div>
-        <p class="small" style="margin-top:8px;">Two walking insertion attempts.</p>
+        <p class="small" style="margin-top:8px;">Two attempts; both inserted.</p>
       </div>
       <div class="vidcell">
         <h3>SONIC-Teleop-v1.1</h3>
         <div class="video"><video controls playsinline preload="metadata" poster="assets/imgs/posters/peg_walking_sonic.jpg"><source src="assets/videos/peg_walking_sonic.mp4" type="video/mp4" /></video></div>
-        <p class="small" style="margin-top:8px;">Two walking insertion attempts.</p>
+        <p class="small" style="margin-top:8px;">Two attempts; neither inserted.</p>
       </div>
     </div>
-    <p class="small">Walking peg-in-hole success rates are in preparation.</p>
+    <p class="small">
+      These are demonstrations, not a counted evaluation: two attempts per controller. In our runs,
+      SONIC-Teleop-v1.1 fails mainly because its lower-body planner does not reliably bring the
+      robot to the designated standing pose before insertion.
+    </p>
   </div>
 
   <!-- ---------- Mime-man ---------- -->
