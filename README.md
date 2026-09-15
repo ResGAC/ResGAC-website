@@ -12,6 +12,7 @@ tools/serve.sh             local preview at :8000
 tools/check_anonymity.sh   pre-push anonymity gate
 tools/check_links.sh       find references to missing media
 tools/scrub_media.sh       strip metadata from videos/images
+tools/stamp_css.sh         version the stylesheet link after editing CSS
 ```
 
 Author names, affiliations, and the code repository are withheld during review.

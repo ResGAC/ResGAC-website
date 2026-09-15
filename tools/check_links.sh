@@ -15,7 +15,7 @@ missing=0
 grep -ohE '(src|href|poster)="[^"]*"' -- *.html \
   | sed 's/.*="//; s/"$//' \
   | grep -vE '^(https?:|mailto:|#|$)' \
-  | sed 's/#.*$//' \
+  | sed 's/[?#].*$//' \
   | sort -u \
   | while read -r ref; do
       [ -z "$ref" ] && continue
@@ -29,7 +29,7 @@ grep -ohE '(src|href|poster)="[^"]*"' -- *.html \
 
 # The loop runs in a subshell, so re-count for the exit status.
 n=$(grep -ohE '(src|href|poster)="[^"]*"' -- *.html \
-    | sed 's/.*="//; s/"$//; s/#.*$//' \
+    | sed 's/.*="//; s/"$//; s/[?#].*$//' \
     | grep -vE '^(https?:|mailto:|$)' | sort -u \
     | while read -r r; do [ -n "$r" ] && [ ! -e "$r" ] && echo x; done | wc -l)
 
