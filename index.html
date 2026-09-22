@@ -38,10 +38,11 @@
   <!-- ---------- Teaser ---------- -->
   <div class="section">
     <h2>Overview</h2>
-    <div class="video-pending">Overview video in preparation.</div>
+    <div class="video"><video controls playsinline preload="metadata" poster="assets/imgs/teaser_poster.jpg"><source src="assets/videos/teaser.mp4" type="video/mp4" /></video></div>
     <p class="small" style="margin-top:10px;">
-      ResGAC on a Unitree G1: \(SE(3)\) dual-arm end-effector tracking, locomotion-disturbance
-      rejection, standing peg-in-hole insertion, and world-frame end-effector holding.
+      A three-minute overview of ResGAC on a Unitree G1: the method, then standing \(SE(3)\)
+      tracking, arm holding while walking, peg-in-hole, and the Mime-man demo. Speed-ups are marked
+      on screen in each clip.
     </p>
   </div>
 
@@ -268,7 +269,7 @@
     <p class="small" style="margin-top:8px;">Top row: ResGAC, E2E-RL, GAC+Decoupled-RL. Bottom row: SONIC-Teleop-v1.1, SONIC-Teleop, SONIC-IK-WBT (labeled SONIC-3pt-v1.1 and SONIC-3pt in the video).</p>
     <h3>ResGAC vs. SONIC-Teleop-v1.1</h3>
     <div class="video"><video controls playsinline preload="metadata" poster="assets/imgs/posters/traj_smooth_vs_sonic.jpg"><source src="assets/videos/traj_smooth_vs_sonic.mp4" type="video/mp4" /></video></div>
-    <p class="small" style="margin-top:8px;">ResGAC (left) against SONIC-Teleop-v1.1 (right), the strongest baseline on position error in Table&nbsp;III.</p>
+    <p class="small" style="margin-top:8px;">ResGAC (left) against SONIC-Teleop-v1.1 (right), the strongest baseline on position error in Table&nbsp;III. The bars show each controller&rsquo;s end-effector position and orientation error as the trajectory plays.</p>
   </div>
   <div class="tabpanel" role="tabpanel" id="panel-setpoints" aria-labelledby="tab-setpoints">
     <p class="small" style="text-align:center; margin:0 0 4px;">A sequence of discrete full-arm-range setpoints, used to evaluate step-response behavior.</p>
@@ -277,7 +278,7 @@
     <p class="small" style="margin-top:8px;">Top row: ResGAC, E2E-RL, GAC+Decoupled-RL. Bottom row: SONIC-Teleop-v1.1, SONIC-Teleop, SONIC-IK-WBT (labeled SONIC-3pt-v1.1 and SONIC-3pt in the video).</p>
     <h3>ResGAC vs. SONIC-Teleop-v1.1</h3>
     <div class="video"><video controls playsinline preload="metadata" poster="assets/imgs/posters/traj_setpoints_vs_sonic.jpg"><source src="assets/videos/traj_setpoints_vs_sonic.mp4" type="video/mp4" /></video></div>
-    <p class="small" style="margin-top:8px;">ResGAC (left) against SONIC-Teleop-v1.1 (right), the strongest baseline on position error in Table&nbsp;III.</p>
+    <p class="small" style="margin-top:8px;">ResGAC (left) against SONIC-Teleop-v1.1 (right), the strongest baseline on position error in Table&nbsp;III. The bars show each controller&rsquo;s end-effector position and orientation error as the trajectory plays.</p>
     <div class="figure figure-small" style="max-width:640px; margin-top:24px;">
       <img src="assets/imgs/nonsmooth_eef_error_convergence_layered.png" alt="End-effector position and orientation error convergence after setpoint changes for ResGAC, E2E-RL, and SONIC-Teleop-v1.1" />
     </div>
@@ -294,7 +295,7 @@
     <p class="small" style="margin-top:8px;">Top row: ResGAC, E2E-RL, GAC+Decoupled-RL. Bottom row: SONIC-Teleop-v1.1, SONIC-Teleop, SONIC-IK-WBT (labeled SONIC-3pt-v1.1 and SONIC-3pt in the video).</p>
     <h3>ResGAC vs. SONIC-Teleop-v1.1</h3>
     <div class="video"><video controls playsinline preload="metadata" poster="assets/imgs/posters/traj_infinity_vs_sonic.jpg"><source src="assets/videos/traj_infinity_vs_sonic.mp4" type="video/mp4" /></video></div>
-    <p class="small" style="margin-top:8px;">ResGAC (left) against SONIC-Teleop-v1.1 (right), the strongest baseline on position error in Table&nbsp;III.</p>
+    <p class="small" style="margin-top:8px;">ResGAC (left) against SONIC-Teleop-v1.1 (right), the strongest baseline on position error in Table&nbsp;III. The bars show each controller&rsquo;s end-effector position and orientation error as the trajectory plays.</p>
   </div>
   <div class="tabpanel" role="tabpanel" id="panel-pickplace" aria-labelledby="tab-pickplace">
     <p class="small" style="text-align:center; margin:0 0 4px;">A slower task-space trajectory sampled from a teleoperated pick-and-place demonstration. Shown at 4&times; speed.</p>
@@ -303,7 +304,7 @@
     <p class="small" style="margin-top:8px;">Top row: ResGAC, E2E-RL, GAC+Decoupled-RL. Bottom row: SONIC-Teleop-v1.1, SONIC-Teleop, SONIC-IK-WBT (labeled SONIC-3pt-v1.1 and SONIC-3pt in the video).</p>
     <h3>ResGAC vs. SONIC-Teleop-v1.1</h3>
     <div class="video"><video controls playsinline preload="metadata" poster="assets/imgs/posters/traj_pickplace_vs_sonic.jpg"><source src="assets/videos/traj_pickplace_vs_sonic.mp4" type="video/mp4" /></video></div>
-    <p class="small" style="margin-top:8px;">ResGAC (left) against SONIC-Teleop-v1.1 (right), the strongest baseline on position error in Table&nbsp;III.</p>
+    <p class="small" style="margin-top:8px;">ResGAC (left) against SONIC-Teleop-v1.1 (right), the strongest baseline on position error in Table&nbsp;III. The bars show each controller&rsquo;s end-effector position and orientation error as the trajectory plays.</p>
   </div>
 </div>
 
